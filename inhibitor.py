@@ -1,58 +1,53 @@
 import pylse
-from sfq_cells2 import DRO_C, INH, JTL, M, s
+from pylse import Wire, working_circuit
+from sfq_cells2 import C, C_INV, DRO_C, INH, M, s
 
-# w1, w2, w3, w4, w5 = pylse.Wire(), pylse.Wire(), pylse.Wire(), pylse.Wire(), pylse.Wire()
-pylse.working_circuit().reset()
-out1, out2, a_p, b_p = pylse.Wire(), pylse.Wire(), pylse.Wire(), pylse.Wire()
+# w1, w2, w3, w4, w5 = Wire(), Wire(), Wire(), Wire(), Wire()
+nu = working_circuit().add_node
 
-inh1 = INH()
-inh2 = INH()
-routemax = DRO_C()
-routemin = DRO_C()
-tiebreak = JTL()
+def comp(a, b, ret_max, ret_min, ret_a, ret_b):
+    ax, a1 = s(a)
+    a3, a4 = s(ax)
+    bx, b1 = s(b)
+    b3, b4 = s(bx)
 
-# def mux_s(a: pylse.Wire, b: pylse.Wire, sel: pylse.Wire, clk: pylse.Wire):
-#     out = pylse.Wire()
-#     pylse.working_circuit().add_node(Mux(), [a, b, sel, clk], [out])
-#     return out
+# Mixmax part
+    xmax, xmin = Wire(), Wire()
+    nu(C(), [a3, b3], [xmax])
+    nu(C_INV(), [a4, b4], [xmin])
 
 
-# clk = pylse.inp_at(*(i*50 for i in range(1, 12)), name='clk')
+    out1 = Wire()
+    inh1 = INH()
+    routemax = DRO_C()
+    routemin = DRO_C()
+    outx1, outx2 = s(out1)
 
-# On tie, both inhibits fire
-# In this case, route rmax to a and rmin to b
-a = pylse.inp_at(10, name='a')
+    back_a1, back_b1, back_a2, back_b2 =  Wire(),  Wire(),  Wire(),  Wire()
+    nu(inh1, [a1, b1], [out1])
+    nu(routemax, [outx1, ret_max], [back_b2, back_a2])
+    nu(routemin, [outx2, ret_min], [back_a1, back_b1])
+    nu(M(), [back_b1, back_b2], [ret_b])
+    nu(M(), [back_a1, back_a2], [ret_a])
+    return xmin, xmax
 
-b = pylse.inp_at(11, name='b')
-a1, a2 = s(a)
-b1, b2 = s(b)
-outx1, outx2 = s(out1)
+def demo_comp(t0, t1, tx, tn):
+    pylse.working_circuit().reset()
+    a = pylse.inp_at(t0, name='a')
+    b = pylse.inp_at(t1, name='b')
+    ret_max = pylse.inp_at(tx, name='rmax')
+    ret_min = pylse.inp_at(tn, name='rmin')
+    ret_a, ret_b = Wire(), Wire()
+    xmin, xmax = comp(a, b, ret_max, ret_min, ret_a, ret_b )
 
-ret_max = pylse.inp_at(100, name='rmax')
-ret_min = pylse.inp_at(50, name='rmin')
-back_a1, back_b1, back_a2, back_b2 =  pylse.Wire(),  pylse.Wire(),  pylse.Wire(),  pylse.Wire()
-ret_a, ret_b = pylse.Wire(),  pylse.Wire()
-pylse.working_circuit().add_node(inh1, [a1, b1], [out1])
-# pylse.working_circuit().add_node(inh2, [b2, a2], [out2])
-pylse.working_circuit().add_node(routemax, [outx1, ret_max], [back_b2, back_a2])
-pylse.working_circuit().add_node(routemin, [outx2, ret_min], [back_a1, back_b1])
-pylse.working_circuit().add_node(M(), [back_b1, back_b2], [ret_b])
-pylse.working_circuit().add_node(M(), [back_a1, back_a2], [ret_a])
+    pylse.inspect(xmin, 'xmin')
+    pylse.inspect(xmax, 'xmax')
+    pylse.inspect(ret_b, 'ret_b')
+    pylse.inspect(ret_a, 'ret_a')
 
-# ...which we'll give a name by `inspect`ing it.
-pylse.inspect(out1, 'afirst')
-# pylse.inspect(out2, 'bfirst')
-# pylse.inspect(a_p, 'a_p')
-# pylse.inspect(b_p, 'b_p')
-# pylse.inspect(back_a1, 'back_a1')
-# pylse.inspect(back_b1, 'back_b1')
-# pylse.inspect(back_a2, 'back_a2')
-# pylse.inspect(back_b2, 'back_b2')
-pylse.inspect(ret_b, 'ret_b')
-pylse.inspect(ret_a, 'ret_a')
+    sim = pylse.Simulation()
+    events = sim.simulate()
+    sim.plot(wires_to_display=['a', 'b', 'rmax', 'rmin', 'xmax', 'xmin', 'ret_a', 'ret_b'])
+    return events
 
-sim = pylse.Simulation()
-events = sim.simulate()
-sim.plot(wires_to_display=['a', 'b', 'afirst', 'rmax', 'rmin', 'ret_a', 'ret_b'])
-# sim.plot(wires_to_display=['a', 'b', 'afirst', 'rmax', 'rmin', 'back_a1', 'back_b1', 'back_a2', 'back_b2'])
-# sim.plot(wires_to_display=['a', 'b', 'a_p', 'b_p', 'bfirst', 'afirst'])
+# demo_comp()
