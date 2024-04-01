@@ -5,7 +5,7 @@ from sfq_cells2 import C, C_INV, DRO_C, INH, M, s
 # w1, w2, w3, w4, w5 = Wire(), Wire(), Wire(), Wire(), Wire()
 nu = working_circuit().add_node
 
-def comp(a, b, ret_max, ret_min, ret_a, ret_b):
+def comp(a, b, ret_min, ret_max, ret_a, ret_b):
     ax, a1 = s(a)
     a3, a4 = s(ax)
     bx, b1 = s(b)
