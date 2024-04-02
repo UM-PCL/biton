@@ -1,4 +1,4 @@
-from numpy import argsort, log2
+from numpy import argsort
 from operator import sub
 from random import shuffle, choice
 from itertools import groupby
@@ -9,64 +9,35 @@ from pylse import Wire
 import pylse
 
 
-def alt(n: int, x: int) -> list[bool]:
-    return [(i // x) % 2 == 1 for i in range(n)]
+def sortk4(inplist: list[Wire], retlist: list[Wire]):
+    rt = [Wire() for _ in range(4)]
+    x = [Wire() for _ in range(4)]
+    y = [Wire() for _ in range(4)]
+    rr = [Wire() for _ in range(4)]
+    ro = [Wire() for _ in range(4)]
+    o = [Wire() for _ in range(4)]
+    x[0], x[1] = comp(inplist[0], inplist[1], rt[0], rt[1], ro[0], ro[1])
+    x[3], x[2] = comp(inplist[3], inplist[2], rt[3], rt[2], ro[3], ro[2])
+    y[0], y[2] = comp(x[0], x[2], rr[0], rr[2], rt[0], rt[2])
+    y[1], y[3] = comp(x[1], x[3], rr[1], rr[3], rt[1], rt[3])
+    o[0], o[1] = comp(y[0], y[1], retlist[0], retlist[1], rr[0], rr[1])
+    o[2], o[3] = comp(y[2], y[3], retlist[2], retlist[3], rr[2], rr[3])
+    # for i, z in enumerate(rr):
+    #     pylse.inspect(z, f"rr{i}")
+    # for i, z in enumerate(rt):
+    #     pylse.inspect(z, f"rt{i}")
+    # for i, z in enumerate(x):
+    #     pylse.inspect(z, f"xx{i}")
+    # for i, z in enumerate(y):
+    #     pylse.inspect(z, f"y{i}")
+    return o, ro
 
 
-def sarrows(n: int, stride: int, xstride: int) -> list[tuple[int, int]]:
-    s = stride * 2
-    steps = n // s
-    arr = [(i, i + stride) for i in range(stride)]
-    arrn = [(j, i) for i, j in arr]
-    alts = alt(steps, xstride)
-    sarr = [
-        (x * s + i, x * s + j)
-        for x in range(steps)
-        for i, j in (arrn if alts[x] else arr)
-    ]
-    return sarr
-
-
-def lnums(x: int) -> list[tuple[int, int]]:
-    xs = [2**i for i in range(x)]
-    return list(zip(xs[::-1], xs))
-
-
-def carrows(n: int) -> list[tuple[int, int, int]]:
-    lgn = int(log2(n))
-    layers = sum((lnums(i) for i in range(1, lgn + 1)), [])
-    return [(n, x, y) for x, y in layers]
-
-def layers(n: int) -> list[list[tuple[int, int]]]:
-    return [sarrows(*x) for x in carrows(n)]
-
-def mklayer(
-    lcons: list[tuple[int, int]], inplist: list[Wire], retin: list[Wire], retback: list[Wire]
-    ) -> list[Wire]:
-    o =  [Wire() for _ in inplist]
-    for i, j in lcons:
-        o[i], o[j] = comp(inplist[i], inplist[j], retin[i], retin[j], retback[i], retback[j])
-    return o
-
-
-def sortk(
-    n: int, inplist: list[Wire], retlist: list[Wire]
-) -> tuple[list[Wire], list[Wire]]:
-    las = layers(n)
-    r =  [[Wire() for _ in range(n)] for _ in las] + [retlist] 
-    f = [inplist]
-    for i, layer in enumerate(las):
-        f.append(mklayer(layer, f[-1], r[i+1], r[i]))
-    bsorted = f[-1]
-    btopk = r[0]
-    return bsorted, btopk
-
-
-def demo_sortk(ils: list[float], rls: list[bool], plot: bool = True):
+def demo_sortk4(ils: list[float], rls: list[bool], plot: bool = True):
     pylse.working_circuit().reset()
     inplist = [pylse.inp_at(x, name=f"x{i}") for i, x in enumerate(ils)]
     retlist = [pylse.inp_at(*([200] * x), name=f"r{i}") for i, x in enumerate(rls)]
-    o, ro = sortk(4, inplist, retlist)
+    o, ro = sortk4(inplist, retlist)
     for i, x in enumerate(o):
         pylse.inspect(x, f"o{i}")
     for i, x in enumerate(ro):
