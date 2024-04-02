@@ -64,9 +64,10 @@ def sortk(
 
 def demo_sortk(ils: list[float], rls: list[bool], plot: bool = True):
     pylse.working_circuit().reset()
+    n = len(ils)
     inplist = [pylse.inp_at(x, name=f"x{i}") for i, x in enumerate(ils)]
     retlist = [pylse.inp_at(*([200] * x), name=f"r{i}") for i, x in enumerate(rls)]
-    o, ro = sortk(4, inplist, retlist)
+    o, ro = sortk(n, inplist, retlist)
     for i, x in enumerate(o):
         pylse.inspect(x, f"o{i}")
     for i, x in enumerate(ro):
@@ -74,7 +75,7 @@ def demo_sortk(ils: list[float], rls: list[bool], plot: bool = True):
     sim = pylse.Simulation()
     events = sim.simulate()
     towatch = ["x", "r", "o", "ro"]
-    watchers = [[f"{x}{i}" for i in range(4)] for x in towatch]
+    watchers = [[f"{x}{i}" for i in range(n)] for x in towatch]
     watch_wires = sum(watchers, [])
     if plot:
         sim.plot(wires_to_display=watch_wires)
@@ -83,11 +84,11 @@ def demo_sortk(ils: list[float], rls: list[bool], plot: bool = True):
     return events
 
 
-def quick_sort4(plot: bool = True):
-    rls = [choice([True, False]) for _ in range(4)]
-    ils: list[float] = [10, 20, 30, 40]
+def quick_sort(n, plot: bool = True):
+    rls = [choice([True, False]) for _ in range(n)]
+    ils: list[float] = list(range(10,(n+1)*10,10))
     shuffle(ils)
-    demo_sortk4(ils, rls, plot)
+    demo_sortk(ils, rls, plot)
 
 
 def events_io(events: Dict[str, list[float]], matchs: list[str]) -> list[list[float]]:
