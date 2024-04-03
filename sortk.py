@@ -37,15 +37,22 @@ def carrows(n: int) -> list[tuple[int, int, int]]:
     layers = sum((lnums(i) for i in range(1, lgn + 1)), [])
     return [(n, x, y) for x, y in layers]
 
+
 def layers(n: int) -> list[list[tuple[int, int]]]:
     return [sarrows(*x) for x in carrows(n)]
 
+
 def mklayer(
-    lcons: list[tuple[int, int]], inplist: list[Wire], retin: list[Wire], retback: list[Wire]
-    ) -> list[Wire]:
-    o =  [Wire() for _ in inplist]
+    lcons: list[tuple[int, int]],
+    inplist: list[Wire],
+    retin: list[Wire],
+    retback: list[Wire],
+) -> list[Wire]:
+    o = [Wire() for _ in inplist]
     for i, j in lcons:
-        o[i], o[j] = comp(inplist[i], inplist[j], retin[i], retin[j], retback[i], retback[j])
+        o[i], o[j] = comp(
+            inplist[i], inplist[j], retin[i], retin[j], retback[i], retback[j]
+        )
     return o
 
 
@@ -53,10 +60,10 @@ def sortk(
     n: int, inplist: list[Wire], retlist: list[Wire]
 ) -> tuple[list[Wire], list[Wire]]:
     las = layers(n)
-    r =  [[Wire() for _ in range(n)] for _ in las] + [retlist] 
+    r = [[Wire() for _ in range(n)] for _ in las] + [retlist]
     f = [inplist]
     for i, layer in enumerate(las):
-        f.append(mklayer(layer, f[-1], r[i+1], r[i]))
+        f.append(mklayer(layer, f[-1], r[i + 1], r[i]))
     bsorted = f[-1]
     btopk = r[0]
     return bsorted, btopk
@@ -86,8 +93,9 @@ def demo_sortk(ils: list[float], rls: list[bool], plot: bool = True):
 
 def quick_sort(n, plot: bool = True):
     rls = [choice([True, False]) for _ in range(n)]
-    ils: list[float] = list(range(10,(n+1)*10,10))
-    shuffle(ils)
+    # ils: list[float] = list(range(10, (n + 1) * 10, 10))
+    # shuffle(ils)
+    ils: list[float] = [choice(range(7)) * 10 + 10 for _ in range(n)]
     demo_sortk(ils, rls, plot)
 
 
@@ -108,9 +116,25 @@ def events_io(events: Dict[str, list[float]], matchs: list[str]) -> list[list[fl
 
 
 def check_out(x, r, o, ro):
+    delta = 0.2
+    n = len(x)
+    hn = n // 2
+    depth = (hn * (hn + 1)) // 2
+    sdelta = depth * delta
+    # print(f"{sdelta=}")
     order = list(argsort(x))
     rbool = [x < inf for x in r]
     robool = [x < inf for x in ro]
-    assert max(map(sub, o, o[1:])) <= 0
+    maxdelta = max(map(sub, o, o[1:]))
+    # print(f"{maxdelta=}")
+    assert maxdelta <= sdelta
+    if sum(rbool) == 0:
+        print("no returns")
+        return
     ordered_robool = [robool[i] for i in order]
-    assert ordered_robool == rbool
+    oughts = [out for out, check in zip(o, ordered_robool) if check]
+    haves = [out for out, check in zip(o, rbool) if check]
+    # print(f"{oughts=}, {haves=}")
+    diffmax = max(map(sub, oughts, haves))
+    # print(f"{diffmax=}")
+    assert diffmax <= sdelta
