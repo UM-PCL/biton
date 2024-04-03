@@ -1,10 +1,10 @@
 from numpy import argsort, log2
 from operator import sub
-from random import shuffle, choice
+from random import choice
 from itertools import groupby
 from math import inf
 from typing import Dict
-from inhibitor import comp
+from inhibitor import cmax, comp
 from pylse import Wire
 import pylse
 
@@ -69,6 +69,39 @@ def sortk(
     return bsorted, btopk
 
 
+def mergemax(inps1: list[Wire], inps2: list[Wire], rets: list[Wire]):
+    ret1 = [Wire() for _ in rets]
+    ret2 = [Wire() for _ in rets]
+    res = map(cmax, inps1, reversed(inps2), rets, ret1, reversed(ret2))
+    return list(res), ret1, ret2
+
+
+def demo_mmax(il1: list[float], il2: list[float], rls: list[bool], plot: bool = True):
+    pylse.working_circuit().reset()
+    n = len(il1)
+    assert len(set(map(len, [il1, il2, rls]))) == 1
+    inplist1 = [pylse.inp_at(x, name=f"x{i}") for i, x in enumerate(il1)]
+    inplist2 = [pylse.inp_at(x, name=f"y{i}") for i, x in enumerate(il2)]
+    retlist = [pylse.inp_at(*([150] * x), name=f"r{i}") for i, x in enumerate(rls)]
+    o, ro1, ro2 = mergemax(inplist1, inplist2, retlist)
+    for i, x in enumerate(o):
+        pylse.inspect(x, f"o{i}")
+    for i, x in enumerate(ro1):
+        pylse.inspect(x, f"rox{i}")
+    for i, x in enumerate(ro2):
+        pylse.inspect(x, f"roy{i}")
+    sim = pylse.Simulation()
+    events = sim.simulate()
+    towatch = ["x", "y", "r", "o", "rox", "roy"]
+    watchers = [[f"{x}{i}" for i in range(n)] for x in towatch]
+    watch_wires = sum(watchers, [])
+    if plot:
+        sim.plot(wires_to_display=watch_wires)
+    # ex, er, eo, ero = events_io(events, towatch)
+    # check_out(ex, er, eo, ero)
+    return events
+
+
 def demo_sortk(ils: list[float], rls: list[bool], plot: bool = True):
     pylse.working_circuit().reset()
     n = len(ils)
@@ -90,6 +123,13 @@ def demo_sortk(ils: list[float], rls: list[bool], plot: bool = True):
     ex, er, eo, ero = events_io(events, towatch)
     check_out(ex, er, eo, ero)
     return events
+
+
+def quick_mmax(n, plot: bool = True):
+    rls = [choice([True, False]) for _ in range(n)]
+    ils1: list[float] = sorted([choice(range(6)) * 10 + 10 for _ in range(n)])
+    ils2: list[float] = sorted([choice(range(6)) * 10 + 10 for _ in range(n)])
+    demo_mmax(ils1, ils2, rls, plot)
 
 
 def quick_sort(n, plot: bool = True):
