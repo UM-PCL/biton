@@ -72,8 +72,9 @@ def sortk(
 def demo_sortk(ils: list[float], rls: list[bool], plot: bool = True):
     pylse.working_circuit().reset()
     n = len(ils)
+    retwait = laydepth(n) * 25
     inplist = [pylse.inp_at(x, name=f"x{i}") for i, x in enumerate(ils)]
-    retlist = [pylse.inp_at(*([300] * x), name=f"r{i}") for i, x in enumerate(rls)]
+    retlist = [pylse.inp_at(*([retwait] * x), name=f"r{i}") for i, x in enumerate(rls)]
     o, ro = sortk(n, inplist, retlist)
     for i, x in enumerate(o):
         pylse.inspect(x, f"o{i}")
@@ -119,11 +120,16 @@ def events_io(events: Dict[str, list[float]], matchs: list[str]) -> list[list[fl
     return evio
 
 
+def laydepth(n: int) -> int:
+    hn = int(log2(n))
+    depth = (hn * (hn + 1)) // 2
+    return depth
+
+
 def check_out(x, r, o, ro):
     delta = 0.2
     n = len(x)
-    hn = int(log2(n))
-    depth = (hn * (hn + 1)) // 2
+    depth = laydepth(n)
     sdelta = depth * delta
     # print(f"{sdelta=}")
     order = list(argsort(x))
@@ -135,6 +141,11 @@ def check_out(x, r, o, ro):
     if sum(rbool) == 0:
         print("no returns")
         return
+    ordx = sorted(x)
+    winners = [out for out, check in zip(ordx, rbool) if check]
+    chosen = sorted([out for out, check in zip(x, robool) if check])
+    # print(f"{winners=}, {chosen=}")
+    assert winners == chosen
     ordered_robool = [robool[i] for i in order]
     oughts = [out for out, check in zip(o, ordered_robool) if check]
     haves = [out for out, check in zip(o, rbool) if check]
