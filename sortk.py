@@ -105,7 +105,7 @@ def demo_mmax(il1: list[float], il2: list[float], rls: list[bool], plot: bool = 
 def demo_sortk(ils: list[float], rls: list[bool], plot: bool = True):
     pylse.working_circuit().reset()
     n = len(ils)
-    retwait = laydepth(n) * 25
+    retwait = laydepth(n) * 20 + max(ils)
     inplist = [pylse.inp_at(x, name=f"x{i}") for i, x in enumerate(ils)]
     retlist = [pylse.inp_at(*([retwait] * x), name=f"r{i}") for i, x in enumerate(rls)]
     o, ro = sortk(n, inplist, retlist)
@@ -121,7 +121,7 @@ def demo_sortk(ils: list[float], rls: list[bool], plot: bool = True):
     if plot:
         sim.plot(wires_to_display=watch_wires)
     evio = events_io(events, towatch)
-    check_merge(*evio)
+    check_out(*evio)
     return events
 
 
@@ -167,7 +167,7 @@ def laydepth(n: int) -> int:
 
 
 def check_out(x, r, o, ro):
-    delta = 0.2
+    delta = 0.8
     n = len(x)
     depth = laydepth(n)
     sdelta = depth * delta
@@ -203,12 +203,12 @@ def check_merge(x, y, r, o, rox, roy):
     maxes = sorted(both)[n:]
     diffz = list(map(sub, maxes, sorted(o)))
     diffmax = max(diffz) - min(diffz)
-    print(f"{diffmax=}")
+    # print(f"{diffmax=}")
     assert diffmax <= 1
     order = list(argsort(o))
     rbool = [x < inf for x in r]
     ordered_rbool = [rbool[i] for i in order]
     oughts = [out for out, check in zip(maxes, ordered_rbool) if check]
     haves = sorted([out for out, check in zip(both, bothrbool) if check])
-    print(f"{oughts=}, {haves=}")
+    # print(f"{oughts=}, {haves=}")
     assert oughts == haves

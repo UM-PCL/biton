@@ -82,7 +82,7 @@ class C(SFQ):
     name = "C"
     inputs = ["a", "b"]
     outputs = ["q"]
-    firing_delay = 9.3
+    firing_delay = 8.1
     transitions = [
         {
             "id": "0",
@@ -130,7 +130,7 @@ class C_INV(SFQ):
     name = "C_INV"
     inputs = ["a", "b"]
     outputs = ["q"]
-    firing_delay = 9.5  # 5-9 is good
+    firing_delay = 8.8  # 5-9 is good
     _reset_time = 5.0
     # NOTE: We're explicitly putting transition 2 before 3 to mean we've prioritized handling
     # 'a' if both 'a' and 'b' arrive at the exact same time; likewise, putting transition 4 before
