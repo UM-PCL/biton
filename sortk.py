@@ -1,4 +1,4 @@
-from numpy import argsort, log2, take_along_axis
+from numpy import argsort, log2
 from operator import sub
 from random import choice
 from itertools import groupby
@@ -57,23 +57,27 @@ def mklayer(
 
 
 def sortk(
-    n: int, inplist: list[Wire], retlist: list[Wire]
-) -> tuple[list[Wire], list[Wire]]:
+    n: int, inplist: list[Wire], retlist: list[Wire], rback: list[Wire]
+) -> list[Wire]:
     las = layers(n)
-    r = [[Wire() for _ in range(n)] for _ in las] + [retlist]
+    ln = len(las)
+    r = [rback] + [[Wire() for _ in range(n)] for _ in range(ln - 1)] + [retlist]
     f = [inplist]
     for i, layer in enumerate(las):
         f.append(mklayer(layer, f[-1], r[i + 1], r[i]))
     bsorted = f[-1]
-    btopk = r[0]
-    return bsorted, btopk
+    return bsorted
 
 
-def mergemax(inps1: list[Wire], inps2: list[Wire], rets: list[Wire]):
-    ret1 = [Wire() for _ in rets]
-    ret2 = [Wire() for _ in rets]
+def mergemax(
+    inps1: list[Wire],
+    inps2: list[Wire],
+    rets: list[Wire],
+    ret1: list[Wire],
+    ret2: list[Wire],
+) -> list[Wire]:
     res = map(cmax, inps1, reversed(inps2), rets, ret1, reversed(ret2))
-    return list(res), ret1, ret2
+    return list(res)
 
 
 def demo_mmax(il1: list[float], il2: list[float], rls: list[bool], plot: bool = True):
@@ -83,7 +87,9 @@ def demo_mmax(il1: list[float], il2: list[float], rls: list[bool], plot: bool = 
     inplist1 = [pylse.inp_at(x, name=f"x{i}") for i, x in enumerate(il1)]
     inplist2 = [pylse.inp_at(x, name=f"y{i}") for i, x in enumerate(il2)]
     retlist = [pylse.inp_at(*([150] * x), name=f"r{i}") for i, x in enumerate(rls)]
-    o, ro1, ro2 = mergemax(inplist1, inplist2, retlist)
+    ro1 = [Wire() for _ in range(n)]
+    ro2 = [Wire() for _ in range(n)]
+    o = mergemax(inplist1, inplist2, retlist, ro1, ro2)
     for i, x in enumerate(o):
         pylse.inspect(x, f"o{i}")
     for i, x in enumerate(ro1):
@@ -108,7 +114,8 @@ def demo_sortk(ils: list[float], rls: list[bool], plot: bool = True):
     retwait = laydepth(n) * 20 + max(ils)
     inplist = [pylse.inp_at(x, name=f"x{i}") for i, x in enumerate(ils)]
     retlist = [pylse.inp_at(*([retwait] * x), name=f"r{i}") for i, x in enumerate(rls)]
-    o, ro = sortk(n, inplist, retlist)
+    ro = [Wire() for _ in range(n)]
+    o = sortk(n, inplist, retlist, ro)
     for i, x in enumerate(o):
         pylse.inspect(x, f"o{i}")
     for i, x in enumerate(ro):
