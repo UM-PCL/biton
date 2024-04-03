@@ -73,7 +73,7 @@ def demo_sortk(ils: list[float], rls: list[bool], plot: bool = True):
     pylse.working_circuit().reset()
     n = len(ils)
     inplist = [pylse.inp_at(x, name=f"x{i}") for i, x in enumerate(ils)]
-    retlist = [pylse.inp_at(*([200] * x), name=f"r{i}") for i, x in enumerate(rls)]
+    retlist = [pylse.inp_at(*([300] * x), name=f"r{i}") for i, x in enumerate(rls)]
     o, ro = sortk(n, inplist, retlist)
     for i, x in enumerate(o):
         pylse.inspect(x, f"o{i}")
@@ -95,13 +95,16 @@ def quick_sort(n, plot: bool = True):
     rls = [choice([True, False]) for _ in range(n)]
     # ils: list[float] = list(range(10, (n + 1) * 10, 10))
     # shuffle(ils)
-    ils: list[float] = [choice(range(7)) * 10 + 10 for _ in range(n)]
+    ils: list[float] = [choice(range(6)) * 10 + 10 for _ in range(n)]
     demo_sortk(ils, rls, plot)
 
 
 def events_io(events: Dict[str, list[float]], matchs: list[str]) -> list[list[float]]:
-    def nonn(x):
+    def nonn(x: str):
         return "".join([i for i in x if not i.isdigit()])
+
+    def onlyn(x: str):
+        return int("".join([i for i in x if i.isdigit()]))
 
     def evnorm(x: list[float]) -> list[float]:
         assert len(x) <= 1
@@ -109,7 +112,8 @@ def events_io(events: Dict[str, list[float]], matchs: list[str]) -> list[list[fl
 
     evks = sorted(events.keys())
     groupks = {
-        k: sum([evnorm(events[x]) for x in v], []) for k, v in groupby(evks, nonn)
+        k: sum([evnorm(events[x]) for x in sorted(v, key=onlyn)], [])
+        for k, v in groupby(evks, nonn)
     }
     evio = [groupks[x] for x in matchs]
     return evio
@@ -118,7 +122,7 @@ def events_io(events: Dict[str, list[float]], matchs: list[str]) -> list[list[fl
 def check_out(x, r, o, ro):
     delta = 0.2
     n = len(x)
-    hn = n // 2
+    hn = int(log2(n))
     depth = (hn * (hn + 1)) // 2
     sdelta = depth * delta
     # print(f"{sdelta=}")
