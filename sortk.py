@@ -1,4 +1,4 @@
-from numpy import argsort, log2
+from numpy import argsort, log2, take_along_axis
 from operator import sub
 from random import choice
 from itertools import groupby
@@ -97,8 +97,8 @@ def demo_mmax(il1: list[float], il2: list[float], rls: list[bool], plot: bool = 
     watch_wires = sum(watchers, [])
     if plot:
         sim.plot(wires_to_display=watch_wires)
-    # ex, er, eo, ero = events_io(events, towatch)
-    # check_out(ex, er, eo, ero)
+    evio = events_io(events, towatch)
+    check_merge(*evio)
     return events
 
 
@@ -120,8 +120,8 @@ def demo_sortk(ils: list[float], rls: list[bool], plot: bool = True):
     watch_wires = sum(watchers, [])
     if plot:
         sim.plot(wires_to_display=watch_wires)
-    ex, er, eo, ero = events_io(events, towatch)
-    check_out(ex, er, eo, ero)
+    evio = events_io(events, towatch)
+    check_merge(*evio)
     return events
 
 
@@ -193,3 +193,22 @@ def check_out(x, r, o, ro):
     diffmax = max(map(sub, oughts, haves))
     # print(f"{diffmax=}")
     assert diffmax <= sdelta
+
+
+def check_merge(x, y, r, o, rox, roy):
+    n = len(x)
+    both = x + y
+    bothr = rox + roy
+    bothrbool = [x < inf for x in bothr]
+    maxes = sorted(both)[n:]
+    diffz = list(map(sub, maxes, sorted(o)))
+    diffmax = max(diffz) - min(diffz)
+    print(f"{diffmax=}")
+    assert diffmax <= 1
+    order = list(argsort(o))
+    rbool = [x < inf for x in r]
+    ordered_rbool = [rbool[i] for i in order]
+    oughts = [out for out, check in zip(maxes, ordered_rbool) if check]
+    haves = sorted([out for out, check in zip(both, bothrbool) if check])
+    print(f"{oughts=}, {haves=}")
+    assert oughts == haves
