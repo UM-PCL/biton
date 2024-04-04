@@ -1,9 +1,10 @@
 from sortk import sortk, mergemax, events_io
 from pylse import Wire, working_circuit
-from sfq_cells2 import JTL
+from sfq_cells2 import JTL, C, C_INV
 import pylse
 from random import choice
 from math import inf, log2
+from numpy.random import choice as npchoice
 
 
 def reductor(
@@ -38,7 +39,7 @@ def arbiter(k: int, inps: list[Wire]) -> list[Wire]:
     n = len(inps)
     # rets = [Wire() for _ in range(k)]
     fdel = get_del(k, n)
-    max_in = 110
+    max_in = 6 * minimum_sampling_del(k, n)
     rets = [pylse.inp_at(fdel + max_in, name=f"r{i}") for i in range(k)]
     retouts = [Wire() for _ in range(n)]
     maxers = reductor(inps, rets, retouts)
@@ -51,15 +52,60 @@ def arbiter(k: int, inps: list[Wire]) -> list[Wire]:
     return retouts
 
 
-def get_del(k: int, n:int) -> float:
+def get_del(k: int, n: int) -> float:
     lk = log2(k)
     depthn = log2(n) - lk
-    depthk = k*(k+1)//2
-    dcell = 8.8
+    depthk = lk * (lk + 1) // 2
     dla = 8.1
-    dlayer = (depthk * dcell) + dla
+    dfa = 8.8
+    dspl = 5.1
+    dcell = max(dla, dfa)
+    dcomp = dcell + (2 * dspl)
+    dcmax = dla + dspl
+    dlayer = (depthk * dcomp) + dcmax
     forward_delay = depthn * dlayer
     return forward_delay
+
+
+def minimum_sampling_del(k: int, n: int) -> float:
+    lk = log2(k)
+    depthn = log2(n) - lk
+    depthk = lk * (lk + 1) // 2
+    dla = 8.1
+    dfa = 8.8
+    deltacell = abs(dla - dfa)
+    delta = depthn * depthk * deltacell
+    clk_del = max(delta, 10)
+    return clk_del
+
+
+clique_prob = [
+    0.8057939982898317,
+    0.11649655545541934,
+    0.05665757307749672,
+    0.009155941808821502,
+    0.01115608050420479,
+    0.000583709562690942,
+    0.00010618326131122197,
+    4.814339373482264e-05,
+    1.5887836016949806e-06,
+    2.093822647431851e-07,
+    1.645295303988626e-08,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+]
+
+
+def clique_sample(n: int, p=clique_prob) -> list[int]:
+    """Returns number of complex cliques from distribution
+    for n logical qubits"""
+    samp = npchoice(range(len(p)), size=n, p=p)
+    return [int(x) for x in samp]
 
 
 def demo_arbiter(k: int, inps: list[float], plot: bool = True):
@@ -84,7 +130,10 @@ def demo_arbiter(k: int, inps: list[float], plot: bool = True):
 
 
 def quick_arbiter(k: int, n: int, plot: bool = True):
-    inps: list[float] = [110 - int(log2(choice(range(1, 2**10 + 1)))) * 10 for _ in range(n)]
+    priority_limit = 6
+    samps = clique_sample(n)
+    clk_del = minimum_sampling_del(k, n)
+    inps: list[float] = [clk_del * (min(x + 1, priority_limit)) for x in samps]
     demo_arbiter(k, inps, plot)
 
 
