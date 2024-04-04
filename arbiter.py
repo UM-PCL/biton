@@ -2,6 +2,8 @@ from sortk import sortk, mergemax, events_io
 from pylse import Wire, working_circuit
 from sfq_cells2 import JTL
 import pylse
+from random import choice
+from math import inf, log2
 
 
 def reductor(
@@ -14,7 +16,7 @@ def reductor(
     assert n // k >= 2
     hn = n // 2
     assert len(retouts) == n
-    if n == 2*k:
+    if n == 2 * k:
         inters1, inters2 = inps[:k], inps[k:]
         rets1, rets2 = retouts[:k], retouts[k:]
     else:
@@ -34,16 +36,16 @@ def reductor(
 
 def arbiter(k: int, inps: list[Wire]) -> list[Wire]:
     n = len(inps)
-    # rets = [Wire() for _ in range(k)]
-    rets = [pylse.inp_at(200, name=f"r{i}") for i in range(k)]
+    rets = [Wire() for _ in range(k)]
+    # rets = [pylse.inp_at(200, name=f"r{i}") for i in range(k)]
     retouts = [Wire() for _ in range(n)]
     maxers = reductor(inps, rets, retouts)
     for i, x in enumerate(maxers):
         pylse.inspect(x, f"max{i}")
-    # for i, x in enumerate(rets):
-    #     pylse.inspect(x, f"r{i}")
-    # for x, y in zip(maxers, rets):
-        # working_circuit().add_node(JTL(), [x], [y])
+    for i, x in enumerate(rets):
+        pylse.inspect(x, f"r{i}")
+    for x, y in zip(maxers, rets):
+        working_circuit().add_node(JTL(), [x], [y])
     return retouts
 
 
@@ -58,13 +60,25 @@ def demo_arbiter(k: int, inps: list[float], plot: bool = True):
     events = sim.simulate()
     towatch = ["x", "top"]
     watchers = [[f"{x}{i}" for i in range(n)] for x in towatch]
-    towatch2 = ["max", "r"]
-    watchers2 = [[f"{x}{i}" for i in range(k)] for x in towatch2]
-    watch_wires = sum(watchers+watchers2, [])
+    # towatch2 = ["max", "r"]
+    # watchers2 = [[f"{x}{i}" for i in range(k)] for x in towatch2]
+    watch_wires = sum(watchers, [])
     if plot:
         sim.plot(wires_to_display=watch_wires)
     evio = events_io(events, towatch)
-    # check_merge(*evio)
+    check_arbitrage(k, *evio)
     return evio
 
 
+def quick_arbiter(k: int, n: int, plot: bool = True):
+    inps: list[float] = [70 - int(log2(choice(range(1, 2**6 + 1)))) * 10 for _ in range(n)]
+    demo_arbiter(k, inps, plot)
+
+
+def check_arbitrage(k: int, x, o):
+    ordx = sorted(x)
+    winners = ordx[-k:]
+    obool = [x < inf for x in o]
+    chosen = sorted([qubit for qubit, sel in zip(x, obool) if sel])
+    print(f"{(winners, chosen)=}")
+    assert winners == chosen
