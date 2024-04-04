@@ -4,6 +4,7 @@ from pylse.circuit import InGen
 import pylse
 from math import inf, log2
 from numpy.random import choice as npchoice
+from tqdm import tqdm 
 
 
 def reductor(
@@ -122,12 +123,15 @@ def clique_sample(n: int, p=clique_prob) -> list[int]:
 
 def info(k, n):
     info_dict = {}
+    info_dict['n'] = n
+    info_dict['k'] = k
     info_dict["temporal_distance"] = minimum_sampling_del(k, n)
     info_dict["forward_delay"] = get_del(k, n)
     info_dict["latest_input"] = 6 * info_dict["temporal_distance"]
     info_dict["return_start"] = info_dict["forward_delay"] + info_dict["latest_input"]
     info_dict["backwards_delay"] = get_back_del(k, n)
     info_dict["total_delay"] = info_dict["return_start"] + info_dict["backwards_delay"]
+    info_dict["JJs"] = jj_estimation(k, n)
     return info_dict
 
 
@@ -153,13 +157,13 @@ def sim_arbiter(k: int, n: int, n_runs: int = 1, plot: bool = True):
         for x in working_circuit()
         if x.element.name not in ["_Source", "InGen"]
     )
-    data["JJs"] = jjs
     est_jj = jj_estimation(k, n)
     assert jjs == est_jj
-    print(data)
+    # print(data)
     for i, x in enumerate(topk):
         pylse.inspect(x, f"top{i}")
-    for _ in range(n_runs):
+    runs = [0] if n_runs == 1 else tqdm(range(n_runs))
+    for _ in runs:
         samps = clique_sample(n)
         inps: list[float] = [clk_del * (min(x + 1, priority_limit)) for x in samps]
         for ig, fire in zip(ingens, inps):
@@ -170,7 +174,7 @@ def sim_arbiter(k: int, n: int, n_runs: int = 1, plot: bool = True):
             sim.plot(wires_to_display=watch_wires)
         evio = events_io(events, towatch)
         check_arbitrage(k, *evio)
-    # return evio
+    # return data
 
 
 def jj_estimation(k, n):
@@ -191,7 +195,7 @@ def jj_estimation(k, n):
     block_jj = (2 * sort_jj) + mmax_jj
     n_block = (n // k) - 1
     estimate_jj = block_jj * n_block
-    return estimate_jj
+    return int(estimate_jj)
 
 
 def demo_arbiter(k: int, inps: list[float], plot: bool = True):
@@ -228,7 +232,7 @@ def check_arbitrage(k: int, x, o):
     winners = ordx[-k:]
     obool = [x < inf for x in o]
     chosen = sorted([qubit for qubit, sel in zip(x, obool) if sel])
-    print(f"{(winners, chosen)=}")
+    # print(f"{(winners, chosen)=}")
     assert winners == chosen
     total_delay = max(ret for ret in o if ret < inf)
     predicted_delay = info(k, len(x))["total_delay"]
