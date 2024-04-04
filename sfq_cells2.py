@@ -2,61 +2,10 @@
 from abc import abstractmethod
 from collections import namedtuple
 from typing import Tuple
-
 from pylse.pylse_exceptions import PylseError
 from pylse.core import Wire
-
-# from pylse.transitional import Transitional, get_transitions_from_source
 from pylse.sfq_cells import SFQ
 
-# Notes:
-# - order of transitions matters (defined priority for inputs that arrive simultaneously)
-# - trigger 'a' means "a arrived", says nothing about b (apart from priority order explained above)
-# - trigger ['a', 'b'] means 'a' or 'b' will cause the transition; if both occur simultaneously, the
-#   left-most (here 'a') will be handled first.
-# - if the transition system is underspecified, there will be an error produced *unless* you set
-#   `strict=False` on the defining class.
-# - transitions with the same source should be defined next to each other (id doesn't matter; it's
-#   for enforcing a visual nicety on the user)
-
-
-# class SFQ(Transitional):
-#     ''' SFQ Transitional subclass (an abstract class).
-#
-#     A child of this class must define, in addition to the properties
-#     expected from the Transitional (and thus also Element) classes,
-#     the following specific to SFQ:
-#         * jjs (int): the number of jjs in this element
-#         * firing_delay (float): the time it takes for an output to be
-#             produced for all firing transitions.
-#
-#     In general, Transitions in Transitional classes can have a firing_delay
-#     per output, per transition; the SFQ class simplifies this by having the
-#     same firing_delay associated with every firing transition, so you can
-#     indeed just ask the element its firing delay, and be guaranteed to have just one.
-#     '''
-#     @property
-#     @abstractmethod
-#     def jjs(self) -> int:
-#         raise NotImplementedError
-#
-#     @property
-#     @abstractmethod
-#     def firing_delay(self) -> int:
-#         raise NotImplementedError
-#
-#     def __init__(self, **overrides):
-#         for t in self.transitions:
-#             if 'firing_delay' in t:
-#                 # Reason: see class documentation :)
-#                 raise PylseError(f'firing_delay is not allowed in SFQ transitions')
-#         super().__init__(**overrides)
-#
-
-
-################
-# Asynchronous #
-################
 class JTL(SFQ):
     """Josephson Transmission Line
 

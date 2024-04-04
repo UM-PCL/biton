@@ -36,17 +36,30 @@ def reductor(
 
 def arbiter(k: int, inps: list[Wire]) -> list[Wire]:
     n = len(inps)
-    rets = [Wire() for _ in range(k)]
-    # rets = [pylse.inp_at(200, name=f"r{i}") for i in range(k)]
+    # rets = [Wire() for _ in range(k)]
+    fdel = get_del(k, n)
+    max_in = 110
+    rets = [pylse.inp_at(fdel + max_in, name=f"r{i}") for i in range(k)]
     retouts = [Wire() for _ in range(n)]
     maxers = reductor(inps, rets, retouts)
     for i, x in enumerate(maxers):
         pylse.inspect(x, f"max{i}")
     for i, x in enumerate(rets):
         pylse.inspect(x, f"r{i}")
-    for x, y in zip(maxers, rets):
-        working_circuit().add_node(JTL(), [x], [y])
+    # for x, y in zip(maxers, rets):
+    #     working_circuit().add_node(JTL(), [x], [y])
     return retouts
+
+
+def get_del(k: int, n:int) -> float:
+    lk = log2(k)
+    depthn = log2(n) - lk
+    depthk = k*(k+1)//2
+    dcell = 8.8
+    dla = 8.1
+    dlayer = (depthk * dcell) + dla
+    forward_delay = depthn * dlayer
+    return forward_delay
 
 
 def demo_arbiter(k: int, inps: list[float], plot: bool = True):
@@ -60,9 +73,9 @@ def demo_arbiter(k: int, inps: list[float], plot: bool = True):
     events = sim.simulate()
     towatch = ["x", "top"]
     watchers = [[f"{x}{i}" for i in range(n)] for x in towatch]
-    # towatch2 = ["max", "r"]
-    # watchers2 = [[f"{x}{i}" for i in range(k)] for x in towatch2]
-    watch_wires = sum(watchers, [])
+    towatch2 = ["max", "r"]
+    watchers2 = [[f"{x}{i}" for i in range(k)] for x in towatch2]
+    watch_wires = sum(watchers + watchers2, [])
     if plot:
         sim.plot(wires_to_display=watch_wires)
     evio = events_io(events, towatch)
@@ -71,7 +84,7 @@ def demo_arbiter(k: int, inps: list[float], plot: bool = True):
 
 
 def quick_arbiter(k: int, n: int, plot: bool = True):
-    inps: list[float] = [70 - int(log2(choice(range(1, 2**6 + 1)))) * 10 for _ in range(n)]
+    inps: list[float] = [110 - int(log2(choice(range(1, 2**10 + 1)))) * 10 for _ in range(n)]
     demo_arbiter(k, inps, plot)
 
 
