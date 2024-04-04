@@ -1,5 +1,6 @@
 from sortk import sortk, mergemax, events_io
 from pylse import Wire, working_circuit
+from pylse.circuit import InGen
 from sfq_cells2 import JTL, C, C_INV
 import pylse
 from random import choice
@@ -67,6 +68,19 @@ def get_del(k: int, n: int) -> float:
     return forward_delay
 
 
+def get_back_del(k: int, n: int) -> float:
+    lk = log2(k)
+    depthn = log2(n) - lk
+    depthk = lk * (lk + 1) // 2
+    ddroc = 9.5
+    dmg = 6.3
+    dcomp = ddroc + dmg
+    dcmax = ddroc
+    dlayer = (depthk * dcomp) + dcmax
+    backdelay = depthn * dlayer
+    return backdelay
+
+
 def minimum_sampling_del(k: int, n: int) -> float:
     lk = log2(k)
     depthn = log2(n) - lk
@@ -106,6 +120,57 @@ def clique_sample(n: int, p=clique_prob) -> list[int]:
     for n logical qubits"""
     samp = npchoice(range(len(p)), size=n, p=p)
     return [int(x) for x in samp]
+
+
+def info(k, n):
+    temporal_distance = minimum_sampling_del(k, n)
+    forward_delay = get_del(k, n)
+    latest_input = 6 * temporal_distance
+    return_start = forward_delay + latest_input
+    backwards_delay = get_back_del(k, n)
+    total_delay = return_start + backwards_delay
+    inf = f"""
+        {temporal_distance =},
+        {forward_delay =},
+        {latest_input =},
+        {return_start =},
+        {backwards_delay =},
+        {total_delay =},
+    """
+    return inf
+
+
+def sim_arbiter(k: int, n: int, n_runs: int = 1, plot: bool = True):
+    working_circuit().reset()
+    priority_limit = 6
+    clk_del = minimum_sampling_del(k, n)
+    inplist = [Wire(name=f"x{i}") for i in range(n)]
+    ingens = [InGen([]) for _ in range(n)]
+    for i in range(n):
+        working_circuit().add_node(
+            ingens[i], [working_circuit().source_wire()], [inplist[i]]
+        )
+    topk = arbiter(k, inplist)
+    towatch = ["x", "top"]
+    watchers = [[f"{x}{i}" for i in range(n)] for x in towatch]
+    towatch2 = ["max", "r"]
+    watchers2 = [[f"{x}{i}" for i in range(k)] for x in towatch2]
+    watch_wires = sum(watchers + watchers2, [])
+    print(info(k, n))
+    for i, x in enumerate(topk):
+        pylse.inspect(x, f"top{i}")
+    for _ in range(n_runs):
+        samps = clique_sample(n)
+        inps: list[float] = [clk_del * (min(x + 1, priority_limit)) for x in samps]
+        for ig, fire in zip(ingens, inps):
+            ig.times = [fire]
+        sim = pylse.Simulation()
+        events = sim.simulate()
+        if plot:
+            sim.plot(wires_to_display=watch_wires)
+        evio = events_io(events, towatch)
+        check_arbitrage(k, *evio)
+    # return evio
 
 
 def demo_arbiter(k: int, inps: list[float], plot: bool = True):
