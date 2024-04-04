@@ -57,8 +57,10 @@ def mklayer(
 
 
 def sortk(
-    n: int, inplist: list[Wire], retlist: list[Wire], rback: list[Wire]
+    inplist: list[Wire], retlist: list[Wire], rback: list[Wire]
 ) -> list[Wire]:
+    n = len(inplist)
+    assert len(retlist) == len(rback) == n
     las = layers(n)
     ln = len(las)
     r = [rback] + [[Wire() for _ in range(n)] for _ in range(ln - 1)] + [retlist]
@@ -115,7 +117,7 @@ def demo_sortk(ils: list[float], rls: list[bool], plot: bool = True):
     inplist = [pylse.inp_at(x, name=f"x{i}") for i, x in enumerate(ils)]
     retlist = [pylse.inp_at(*([retwait] * x), name=f"r{i}") for i, x in enumerate(rls)]
     ro = [Wire() for _ in range(n)]
-    o = sortk(n, inplist, retlist, ro)
+    o = sortk(inplist, retlist, ro)
     for i, x in enumerate(o):
         pylse.inspect(x, f"o{i}")
     for i, x in enumerate(ro):
