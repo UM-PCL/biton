@@ -1,9 +1,7 @@
 from sortk import sortk, mergemax, events_io
 from pylse import Wire, working_circuit
 from pylse.circuit import InGen
-from sfq_cells2 import JTL, C, C_INV
 import pylse
-from random import choice
 from math import inf, log2
 from numpy.random import choice as npchoice
 
@@ -123,21 +121,14 @@ def clique_sample(n: int, p=clique_prob) -> list[int]:
 
 
 def info(k, n):
-    temporal_distance = minimum_sampling_del(k, n)
-    forward_delay = get_del(k, n)
-    latest_input = 6 * temporal_distance
-    return_start = forward_delay + latest_input
-    backwards_delay = get_back_del(k, n)
-    total_delay = return_start + backwards_delay
-    inf = f"""
-        {temporal_distance =},
-        {forward_delay =},
-        {latest_input =},
-        {return_start =},
-        {backwards_delay =},
-        {total_delay =},
-    """
-    return inf
+    info_dict = {}
+    info_dict["temporal_distance"] = minimum_sampling_del(k, n)
+    info_dict["forward_delay"] = get_del(k, n)
+    info_dict["latest_input"] = 6 * info_dict["temporal_distance"]
+    info_dict["return_start"] = info_dict["forward_delay"] + info_dict["latest_input"]
+    info_dict["backwards_delay"] = get_back_del(k, n)
+    info_dict["total_delay"] = info_dict["return_start"] + info_dict["backwards_delay"]
+    return info_dict
 
 
 def sim_arbiter(k: int, n: int, n_runs: int = 1, plot: bool = True):
@@ -156,7 +147,16 @@ def sim_arbiter(k: int, n: int, n_runs: int = 1, plot: bool = True):
     towatch2 = ["max", "r"]
     watchers2 = [[f"{x}{i}" for i in range(k)] for x in towatch2]
     watch_wires = sum(watchers + watchers2, [])
-    print(info(k, n))
+    data = info(k, n)
+    jjs = sum(
+        x.element.jjs
+        for x in working_circuit()
+        if x.element.name not in ["_Source", "InGen"]
+    )
+    data["JJs"] = jjs
+    est_jj = jj_estimation(k, n)
+    assert jjs == est_jj
+    print(data)
     for i, x in enumerate(topk):
         pylse.inspect(x, f"top{i}")
     for _ in range(n_runs):
@@ -171,6 +171,27 @@ def sim_arbiter(k: int, n: int, n_runs: int = 1, plot: bool = True):
         evio = events_io(events, towatch)
         check_arbitrage(k, *evio)
     # return evio
+
+
+def jj_estimation(k, n):
+    la_jj = 4
+    fa_jj = 4
+    inh_jj = 13
+    droc_jj = 13
+    mg_jj = 5
+    s_jj = 3
+    comp_jj = la_jj + fa_jj + (5 * s_jj) + (2 * droc_jj) + inh_jj + (2 * mg_jj)
+    cmax_jj = la_jj + (2 * s_jj) + inh_jj + droc_jj
+    arrow_jj = comp_jj * k // 2
+    lk = log2(k)
+    # depthn = log2(n) - lk
+    depthk = lk * (lk + 1) // 2
+    sort_jj = arrow_jj * depthk
+    mmax_jj = cmax_jj * k
+    block_jj = (2 * sort_jj) + mmax_jj
+    n_block = (n // k) - 1
+    estimate_jj = block_jj * n_block
+    return estimate_jj
 
 
 def demo_arbiter(k: int, inps: list[float], plot: bool = True):
@@ -209,3 +230,6 @@ def check_arbitrage(k: int, x, o):
     chosen = sorted([qubit for qubit, sel in zip(x, obool) if sel])
     print(f"{(winners, chosen)=}")
     assert winners == chosen
+    total_delay = max(ret for ret in o if ret < inf)
+    predicted_delay = info(k, len(x))["total_delay"]
+    assert total_delay <= predicted_delay + 1

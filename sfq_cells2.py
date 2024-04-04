@@ -213,7 +213,7 @@ class INH(SFQ):
             "firing": "q",
         },
     ]
-    jjs = 4
+    jjs = 13 # to reflect DROSR's cost
     firing_delay = 3.6
 
 
