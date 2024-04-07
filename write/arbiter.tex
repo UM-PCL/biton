@@ -188,9 +188,13 @@ signal of the input that came first. We use a splitter to
 pass $a \inhib b$ to the data input of both DROCs and two
 merger cells to combine their outputs for $sel_a$ and
 $sel_b$. Four more splitters are used to send inputs $a$ and
-$b$ to the FA, LA and INH cells. The comparator module only
+$b$ to the FA, LA and DRO cells. The comparator module only
 requires a handful of gates, significantly less than a
 bit-parallel implementation would, which makes it ideal for
 our resource constrained environment.
+
+The arbiter circuit has been implemented in the PyLse
+pulse-transfer simulator for various sizes. Measurements for
+area and latency are shown in table x and fig y.
 
 \end{document}
