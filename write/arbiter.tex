@@ -112,8 +112,11 @@ sorter and the $(k-i)$-th one of the second sorter. We then
 pass the $\frac{n}{2}$ signals through a similar sort and
 reduce process. We repeat this until only $k$ signals are
 left, from which the $return$ signals will originate. This
-reduces the number of comparators from \dots, and the number
-of comparators a signal goes through \dots, which minimizes
+reduces the number of comparators from $\frac{n \log_2{n}
+(\log_2{n}+1)}{4}$ to $(\frac{k \log_2{k} (\log_2{k}+1)}{4} +\frac{k}{2}) (2\frac{n}{k}-1)$, and the number
+of comparators a signal goes through from $\frac{\log_2{n}
+(\log_2{n}+1)}{2}$ to $\log_2{\frac{n}{k}}(\frac{\log_2{k}
+(\log_2{k}+1)}{2} + 1)$, which minimizes
 latency.
 
 Since we only keep the $x_{max}$ output from the comparators
