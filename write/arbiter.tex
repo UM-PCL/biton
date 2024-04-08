@@ -198,9 +198,19 @@ The arbiter circuit has been implemented in the PyLse
 pulse-transfer simulator for various sizes. Measurements for
 area and latency are shown in table x and fig y.
 
-\includegraphics*[width=0.25\paperwidth]{diagrams/comparator.drawio.pdf}
-\includegraphics*[width=0.25\paperwidth]{diagrams/sort4.drawio.pdf}
-\includegraphics*[width=0.25\paperwidth]{diagrams/arbiterk4n16.drawio.pdf}
-\includegraphics*[width=0.25\paperwidth]{diagrams/circuit_comparator.drawio.pdf}
+\begin{table}[]
+\begin{tabular}{|l|l|l|l|}
+\hline
+k & n   & latency (ps) & area (JJ) \\ \hline
+2 & 64  & 348          & 6696      \\ \hline
+4 & 128 & 698          & 31248     \\ \hline
+8 & 256 & 1284         & 116064    \\ \hline
+\end{tabular}
+\end{table}
+
+\includegraphics*[width=0.5\textwidth]{diagrams/comparator.drawio.pdf}
+\includegraphics*[width=0.5\textwidth]{diagrams/sort4.drawio.pdf}
+\includegraphics*[width=0.5\textwidth]{diagrams/arbiterk4n16.drawio.pdf}
+\includegraphics*[width=0.5\textwidth]{diagrams/circuit_comparator.drawio.pdf}
 
 \end{document}
