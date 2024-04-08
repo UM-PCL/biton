@@ -38,8 +38,13 @@ def carrows(n: int) -> list[tuple[int, int, int]]:
     return [(n, x, y) for x, y in layers]
 
 
-def layers(n: int) -> list[list[tuple[int, int]]]:
-    return [sarrows(*x) for x in carrows(n)]
+def unidirectional_arrows(n):
+    return [(n, i, j) for _, i, j in carrows(2 * n)[-int(log2(n)) :]]
+
+
+def layers(n: int, prune=False) -> list[list[tuple[int, int]]]:
+    conn_func = carrows if not prune else unidirectional_arrows
+    return [sarrows(*x) for x in conn_func(n)]
 
 
 def mklayer(
@@ -57,11 +62,11 @@ def mklayer(
 
 
 def sortk(
-    inplist: list[Wire], retlist: list[Wire], rback: list[Wire]
+    inplist: list[Wire], retlist: list[Wire], rback: list[Wire], prune: bool = False
 ) -> list[Wire]:
     n = len(inplist)
     assert len(retlist) == len(rback) == n
-    las = layers(n)
+    las = layers(n, prune)
     ln = len(las)
     r = [rback] + [[Wire() for _ in range(n)] for _ in range(ln - 1)] + [retlist]
     f = [inplist]
