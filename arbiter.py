@@ -29,8 +29,8 @@ def reductor(
         inters2 = reductor(inps2, rets2, retouts[hn:])
     retm1 = [Wire() for _ in range(k)]
     retm2 = [Wire() for _ in range(k)]
-    sorts1 = sortk(inters1, retm1, rets1, prune=last_level)
-    sorts2 = sortk(inters2, retm2, rets2, prune=last_level)
+    sorts1 = sortk(inters1, retm1, rets1, prune=not last_level)
+    sorts2 = sortk(inters2, retm2, rets2, prune=not last_level)
     maxers = mergemax(sorts1, sorts2, retins, retm1, retm2)
     assert len(maxers) == k
     return maxers
@@ -63,8 +63,9 @@ def get_del(k: int, n: int) -> float:
     dcell = max(dla, dfa)
     dcomp = dcell + (2 * dspl)
     dcmax = dla + dspl
-    dlayer = (depthk * dcomp) + dcmax
-    forward_delay = depthn * dlayer
+    dlayer = (lk * dcomp) + dcmax
+    dlayer1 = (depthk * dcomp) + dcmax
+    forward_delay = dlayer1 + (depthn-1) * dlayer
     return forward_delay
 
 
@@ -76,8 +77,9 @@ def get_back_del(k: int, n: int) -> float:
     dmg = 6.3
     dcomp = ddroc + dmg
     dcmax = ddroc
-    dlayer = (depthk * dcomp) + dcmax
-    backdelay = depthn * dlayer
+    dlayer1 = (depthk * dcomp) + dcmax
+    dlayern = (lk * dcomp) + dcmax
+    backdelay = dlayer1 + (depthn-1) * dlayern
     return backdelay
 
 
@@ -88,7 +90,7 @@ def minimum_sampling_del(k: int, n: int) -> float:
     dla = 8.1
     dfa = 8.8
     deltacell = abs(dla - dfa)
-    delta = depthn * depthk * deltacell
+    delta = (depthk + (depthn - 1) * lk) * deltacell
     clk_del = max(delta, 10)
     return clk_del
 
@@ -159,12 +161,12 @@ def sim_arbiter(k: int, n: int, n_runs: int = 1, plot: bool = True):
         if x.element.name not in ["_Source", "InGen"]
     )
     est_jj = jj_estimation(k, n)
-    # assert jjs == est_jj
-    print(f"{(n,k,jjs)=}")
+    assert jjs == est_jj
+    # print(f"{(n,k,jjs)=}")
     # print(data)
     for i, x in enumerate(topk):
         pylse.inspect(x, f"top{i}")
-    runs = [0] if n_runs == 1 else tqdm(range(n_runs))
+    runs = [0] if n_runs == 1 else tqdm(range(n_runs), desc=f"{(k,n)=}")
     for _ in runs:
         samps = clique_sample(n)
         inps: list[float] = [clk_del * (min(x + 1, priority_limit)) for x in samps]
@@ -193,10 +195,14 @@ def jj_estimation(k, n):
     # depthn = log2(n) - lk
     depthk = lk * (lk + 1) // 2
     sort_jj = arrow_jj * depthk
+    bsort_jj = arrow_jj * lk
     mmax_jj = cmax_jj * k
-    block_jj = (2 * sort_jj) + mmax_jj
-    n_block = (n // k) - 1
-    estimate_jj = block_jj * n_block
+    block1_jj = (2 * sort_jj) + mmax_jj
+    blockn_jj = (2 * bsort_jj) + mmax_jj
+    start_blocks = (n // k) // 2
+    n_block = start_blocks - 1
+    estimate_jj = (start_blocks * block1_jj) + (blockn_jj * n_block)
+    # assert False
     return int(estimate_jj)
 
 
@@ -238,5 +244,5 @@ def check_arbitrage(k: int, x, o):
     assert winners == chosen
     total_delay = max(ret for ret in o if ret < inf)
     predicted_delay = info(k, len(x))["total_delay"]
-    print(f"{(k,total_delay)=}")
+    # print(f"{(k,total_delay)=}")
     assert total_delay <= predicted_delay + 1
