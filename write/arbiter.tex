@@ -113,11 +113,10 @@ sorter and the $(k-i)$-th one of the second sorter. We then
 pass the $\frac{n}{2}$ signals through a similar sort and
 reduce process. We repeat this until only $k$ signals are
 left, from which the $return$ signals will originate. This
-reduces the number of comparators from $\frac{n \log_2{n}
-(\log_2{n}+1)}{4}$ to $(\frac{k \log_2{k} (\log_2{k}+1)}{4} +\frac{k}{2}) (2\frac{n}{k}-1)$, and the number
-of comparators a signal goes through from $\frac{\log_2{n}
-(\log_2{n}+1)}{2}$ to $\log_2{\frac{n}{k}}(\frac{\log_2{k}
-(\log_2{k}+1)}{2} + 1)$, which minimizes
+reduces the number of comparators from $\frac{n \log_2(n)
+(\log_2(n)+1)}{4}$ to $(\frac{k \log_2(k) (\log_2(k)+1)}{4} +\frac{k}{2}) \frac{n}{k}+(\frac{n}{k}-2)\frac{k \log_2(k) + k}{2}$, and the number
+of comparators a signal goes through from $\frac{\log_2(n)
+(\log_2(n)+1)}{2}$ to $\frac{\log_2(k) (\log_2(k)-1)}{2} + \log_2(\frac{n}{k})(\log_2(k) + 1)$, which minimizes
 latency.
 
 Since we only keep the $x_{max}$ output from the comparators
@@ -201,10 +200,10 @@ area and latency are shown in table x and fig y.
 \begin{table}[]
 \begin{tabular}{|l|l|l|l|}
 \hline
-k & n   & latency (ps) & area (JJ) \\ \hline
-2 & 64  & 348          & 6696      \\ \hline
-4 & 128 & 698          & 31248     \\ \hline
-8 & 256 & 1284         & 116064    \\ \hline
+n   & k & latency (ps) & area (JJ) \\ \hline
+64  & 2 & 348          & 6696      \\ \hline
+128 & 4 & 556          & 26928     \\ \hline
+256 & 8 & 816          & 90144     \\ \hline
 \end{tabular}
 \end{table}
 
