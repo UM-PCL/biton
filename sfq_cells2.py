@@ -1046,7 +1046,7 @@ def split(w, n=2, names=None, **overrides) -> Tuple[Wire, ...]:
     return f(w, n, names)
 
 
-def jtl_chain(w, n, names=[], **overrides) -> Wire:
+def jtl_chain(w: Wire, n: int, names=[], **overrides) -> Wire:
     """Create a chain of n JTL elements
 
     :param Wire w: wire to enter the first JTL in the chain
