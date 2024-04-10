@@ -8,6 +8,8 @@ from inhibitor import cmax, comp
 from pylse import Wire
 import pylse
 
+from sfq_cells2 import M
+
 
 def alt(n: int, x: int) -> list[bool]:
     return [(i // x) % 2 == 1 for i in range(n)]
@@ -85,6 +87,21 @@ def sortk(
         f.append(mklayer(layer, f[-1], r[i + 1], r[i]))
     bsorted = f[-1]
     return bsorted
+
+
+def mergemax_r(
+    inps1: list[Wire],
+    inps2: list[Wire],
+    rets: list[Wire],
+    ret1: list[Wire],
+    ret2: list[Wire],
+    clears: list[Wire],
+) -> list[Wire]:
+    ret1_temp = [Wire() for _ in ret1]
+    res = map(cmax, reversed(inps1), inps2, rets, reversed(ret1_temp), ret2)
+    for rt, cl, r1 in zip(ret1_temp, clears, ret1):
+        pylse.working_circuit().add_node(M(), [rt, cl], [r1])
+    return list(res)
 
 
 def mergemax(

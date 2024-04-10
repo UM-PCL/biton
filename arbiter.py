@@ -1,4 +1,4 @@
-from sortk import sortk, mergemax, events_io
+from sortk import mergemax_r, sortk, mergemax, events_io
 from pylse import Wire, working_circuit
 from pylse.circuit import InGen
 import pylse
@@ -11,6 +11,7 @@ def reductor(
     inps: list[Wire],
     retins: list[Wire],
     retouts: list[Wire],
+    clear: float = 0,
 ) -> list[Wire]:
     n = len(inps)
     k = len(retins)
@@ -25,26 +26,30 @@ def reductor(
         inps1, inps2 = inps[:hn], inps[hn:]
         rets1 = [Wire() for _ in range(k)]
         rets2 = [Wire() for _ in range(k)]
-        inters1 = reductor(inps1, rets1, retouts[:hn])
-        inters2 = reductor(inps2, rets2, retouts[hn:])
+        inters1 = reductor(inps1, rets1, retouts[:hn], clear)
+        inters2 = reductor(inps2, rets2, retouts[hn:], clear)
     retm1 = [Wire() for _ in range(k)]
     retm2 = [Wire() for _ in range(k)]
     sorts1 = sortk(inters1, retm1, rets1, prune=not last_level)
     sorts2 = sortk(inters2, retm2, rets2, prune=not last_level)
     # maxers = mergemax(sorts2, sorts1, retins, retm2, retm1)
-    maxers = mergemax(sorts1, sorts2, retins, retm1, retm2)
+    if clear == 0:
+        maxers = mergemax(sorts1, sorts2, retins, retm1, retm2)
+    else:
+        clears = [pylse.inp_at(clear) for _ in range(k)]
+        maxers = mergemax_r(sorts1, sorts2, retins, retm1, retm2, clears)
     assert len(maxers) == k
     return maxers
 
 
-def arbiter(k: int, inps: list[Wire]) -> list[Wire]:
+def arbiter(k: int, inps: list[Wire], clear: float = 0) -> list[Wire]:
     n = len(inps)
     # rets = [Wire() for _ in range(k)]
     fdel = get_del(k, n)
-    max_in = 6 * minimum_sampling_del(k, n)
+    max_in = 17 * minimum_sampling_del(k, n)
     rets = [pylse.inp_at(fdel + max_in, name=f"r{i}") for i in range(k)]
     retouts = [Wire() for _ in range(n)]
-    maxers = reductor(inps, rets, retouts)
+    maxers = reductor(inps, rets, retouts, clear)
     for i, x in enumerate(maxers):
         pylse.inspect(x, f"max{i}")
     for i, x in enumerate(rets):
@@ -131,7 +136,7 @@ def info(k, n):
     info_dict["k"] = k
     info_dict["temporal_distance"] = minimum_sampling_del(k, n)
     info_dict["forward_delay"] = get_del(k, n)
-    info_dict["latest_input"] = 6 * info_dict["temporal_distance"]
+    info_dict["latest_input"] = 17 * info_dict["temporal_distance"]
     info_dict["return_start"] = info_dict["forward_delay"] + info_dict["latest_input"]
     info_dict["backwards_delay"] = get_back_del(k, n)
     info_dict["total_delay"] = info_dict["return_start"] + info_dict["backwards_delay"]
@@ -207,7 +212,7 @@ def jj_estimation(k, n):
     return int(estimate_jj)
 
 
-def demo_arbiter(k: int, inps: list[float], plot: bool = True):
+def demo_arbiter(k: int, inps: list[float], plot: bool = True, clear: bool = False):
     working_circuit().reset()
     n = len(inps)
     inplist = [Wire(name=f"x{i}") for i in range(n)]
@@ -218,7 +223,10 @@ def demo_arbiter(k: int, inps: list[float], plot: bool = True):
         )
     for ig, fire in zip(ingens, inps):
         ig.times = [fire]
-    topk = arbiter(k, inplist)
+    if clear:
+        topk = arbiter(k, inplist, clear=info(k,n)["total_delay"]+100)
+    else:
+        topk = arbiter(k, inplist)
     for i, x in enumerate(topk):
         pylse.inspect(x, f"top{i}")
     sim = pylse.Simulation()
