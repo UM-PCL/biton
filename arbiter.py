@@ -42,12 +42,9 @@ def reductor(
     return maxers
 
 
-def arbiter(k: int, inps: list[Wire], clear: float = 0) -> list[Wire]:
+def arbiter(k: int, inps: list[Wire], rets: list[Wire], clear: float = 0) -> list[Wire]:
     n = len(inps)
     # rets = [Wire() for _ in range(k)]
-    fdel = get_del(k, n)
-    max_in = 17 * minimum_sampling_del(k, n)
-    rets = [pylse.inp_at(fdel + max_in, name=f"r{i}") for i in range(k)]
     retouts = [Wire() for _ in range(n)]
     maxers = reductor(inps, rets, retouts, clear)
     for i, x in enumerate(maxers):
@@ -82,7 +79,9 @@ def get_back_del(k: int, n: int) -> float:
     ddroc = 9.5
     dmg = 6.3
     dcomp = ddroc + dmg
-    dcmax = ddroc
+    # adding dmg to delay of cmax because
+    # of merger for reset signal entry in one side
+    dcmax = ddroc + dmg
     dlayer1 = (depthk * dcomp) + dcmax
     dlayern = (lk * dcomp) + dcmax
     backdelay = dlayer1 + (depthn - 1) * dlayern
@@ -136,7 +135,7 @@ def info(k, n):
     info_dict["k"] = k
     info_dict["temporal_distance"] = minimum_sampling_del(k, n)
     info_dict["forward_delay"] = get_del(k, n)
-    info_dict["latest_input"] = 17 * info_dict["temporal_distance"]
+    info_dict["latest_input"] = 6 * info_dict["temporal_distance"]
     info_dict["return_start"] = info_dict["forward_delay"] + info_dict["latest_input"]
     info_dict["backwards_delay"] = get_back_del(k, n)
     info_dict["total_delay"] = info_dict["return_start"] + info_dict["backwards_delay"]
@@ -144,7 +143,9 @@ def info(k, n):
     return info_dict
 
 
-def sim_arbiter(k: int, n: int, n_runs: int = 1, plot: bool = True):
+def sim_arbiter(
+    k: int, n: int, n_runs: int = 1, plot: bool = True, clear: bool = False
+):
     working_circuit().reset()
     priority_limit = 6
     clk_del = minimum_sampling_del(k, n)
@@ -154,40 +155,51 @@ def sim_arbiter(k: int, n: int, n_runs: int = 1, plot: bool = True):
         working_circuit().add_node(
             ingens[i], [working_circuit().source_wire()], [inplist[i]]
         )
-    topk = arbiter(k, inplist)
+    data = info(k, n)
+    total_delay: float = data["total_delay"]
+    fdel = get_del(k, n)
+    max_in = priority_limit * minimum_sampling_del(k, n)
+    clear_max_in = n * minimum_sampling_del(k, n)
+    clear_time = total_delay + fdel + clear_max_in
+    retimes = [fdel + max_in] + clear * [clear_time]
+    rets = [pylse.inp_at(*retimes, name=f"r{i}") for i in range(k)]
+    if clear:
+        topk = arbiter(k, inplist, rets, clear=clear_time)
+    else:
+        topk = arbiter(k, inplist, rets)
     towatch = ["x", "top"]
     watchers = [[f"{x}{i}" for i in range(n)] for x in towatch]
     towatch2 = ["max", "r"]
     watchers2 = [[f"{x}{i}" for i in range(k)] for x in towatch2]
     watch_wires = sum(watchers + watchers2, [])
-    data = info(k, n)
     jjs = sum(
         x.element.jjs
         for x in working_circuit()
         if x.element.name not in ["_Source", "InGen"]
     )
-    est_jj = jj_estimation(k, n)
+    est_jj = jj_estimation(k, n, clear)
     assert jjs == est_jj
     # print(f"{(n,k,jjs)=}")
     # print(data)
+    reset_inputs = [total_delay + clk_del * (i + 1) for i in range(n)]
     for i, x in enumerate(topk):
         pylse.inspect(x, f"top{i}")
     runs = [0] if n_runs == 1 else tqdm(range(n_runs), desc=f"{(k,n)=}")
     for _ in runs:
         samps = clique_sample(n)
         inps: list[float] = [clk_del * (min(x + 1, priority_limit)) for x in samps]
-        for ig, fire in zip(ingens, inps):
-            ig.times = [fire]
+        for ig, fire, rst in zip(ingens, inps, reset_inputs):
+            ig.times = [fire] + clear * [rst]
         sim = pylse.Simulation()
         events = sim.simulate()
         if plot:
             sim.plot(wires_to_display=watch_wires)
         evio = events_io(events, towatch)
-        check_arbitrage(k, *evio)
+        check_arbitrage(k, *evio, clear=clear)
     # return data
 
 
-def jj_estimation(k, n):
+def jj_estimation(k, n, clear: bool = False):
     la_jj = 4
     fa_jj = 4
     inh_jj = 13
@@ -208,6 +220,8 @@ def jj_estimation(k, n):
     start_blocks = (n // k) // 2
     n_block = start_blocks - 1
     estimate_jj = (start_blocks * block1_jj) + (blockn_jj * n_block)
+    reset_droc_tax = (start_blocks + n_block) * k * mg_jj
+    estimate_jj += clear * reset_droc_tax
     # assert False
     return int(estimate_jj)
 
@@ -224,7 +238,7 @@ def demo_arbiter(k: int, inps: list[float], plot: bool = True, clear: bool = Fal
     for ig, fire in zip(ingens, inps):
         ig.times = [fire]
     if clear:
-        topk = arbiter(k, inplist, clear=info(k,n)["total_delay"]+100)
+        topk = arbiter(k, inplist, clear=info(k, n)["total_delay"] + 100)
     else:
         topk = arbiter(k, inplist)
     for i, x in enumerate(topk):
@@ -251,7 +265,8 @@ def quick_arbiter(k: int, n: int, plot: bool = True):
     demo_arbiter(k, inps, plot)
 
 
-def check_arbitrage(k: int, x, o):
+def check_arbitrage(k: int, x, o, clear: bool = False):
+    n = len(x)
     ordx = sorted(x)
     winners = ordx[-k:]
     obool = [x < inf for x in o]
@@ -259,9 +274,12 @@ def check_arbitrage(k: int, x, o):
     # print(f"{(winners, chosen)=}")
     assert winners == chosen
     total_delay = max(ret for ret in o if ret < inf)
-    predicted_delay = info(k, len(x))["total_delay"]
-    # print(f"{(k,total_delay)=}")
-    assert total_delay <= predicted_delay + 1
+    pred_total = info(k, len(x))["total_delay"]
+    predicted_delay = pred_total if not clear else 2 * pred_total + 100
+    if clear:
+        print(f"{(k,n,total_delay)=}")
+    else:
+        assert total_delay <= predicted_delay + 1
 
 
 def inhs_reset() -> bool:

@@ -132,20 +132,21 @@ class M(SFQ):
     inputs = ["a", "b"]
     outputs = ["q"]
     firing_delay = 6.3
+    _hold_time = 5
     transitions = [
         {
             "source": "idle",
             "trigger": "a",
             "firing": "q",
             "dest": "idle",
-            "transition_time": firing_delay,
+            "transition_time": _hold_time,
         },
         {
             "source": "idle",
             "trigger": "b",
             "firing": "q",
             "dest": "idle",
-            "transition_time": firing_delay,
+            "transition_time": _hold_time,
         },
     ]
     jjs = 5
