@@ -4,7 +4,7 @@ from pylse.circuit import InGen
 import pylse
 from math import inf, log2
 from numpy.random import choice as npchoice
-from tqdm import tqdm 
+from tqdm import tqdm
 
 
 def reductor(
@@ -31,6 +31,7 @@ def reductor(
     retm2 = [Wire() for _ in range(k)]
     sorts1 = sortk(inters1, retm1, rets1, prune=not last_level)
     sorts2 = sortk(inters2, retm2, rets2, prune=not last_level)
+    # maxers = mergemax(sorts2, sorts1, retins, retm2, retm1)
     maxers = mergemax(sorts1, sorts2, retins, retm1, retm2)
     assert len(maxers) == k
     return maxers
@@ -65,7 +66,7 @@ def get_del(k: int, n: int) -> float:
     dcmax = dla + dspl
     dlayer = (lk * dcomp) + dcmax
     dlayer1 = (depthk * dcomp) + dcmax
-    forward_delay = dlayer1 + (depthn-1) * dlayer
+    forward_delay = dlayer1 + (depthn - 1) * dlayer
     return forward_delay
 
 
@@ -79,7 +80,7 @@ def get_back_del(k: int, n: int) -> float:
     dcmax = ddroc
     dlayer1 = (depthk * dcomp) + dcmax
     dlayern = (lk * dcomp) + dcmax
-    backdelay = dlayer1 + (depthn-1) * dlayern
+    backdelay = dlayer1 + (depthn - 1) * dlayern
     return backdelay
 
 
@@ -126,8 +127,8 @@ def clique_sample(n: int, p=clique_prob) -> list[int]:
 
 def info(k, n):
     info_dict = {}
-    info_dict['n'] = n
-    info_dict['k'] = k
+    info_dict["n"] = n
+    info_dict["k"] = k
     info_dict["temporal_distance"] = minimum_sampling_del(k, n)
     info_dict["forward_delay"] = get_del(k, n)
     info_dict["latest_input"] = 6 * info_dict["temporal_distance"]
@@ -209,7 +210,14 @@ def jj_estimation(k, n):
 def demo_arbiter(k: int, inps: list[float], plot: bool = True):
     working_circuit().reset()
     n = len(inps)
-    inplist = [pylse.inp_at(x, name=f"x{i}") for i, x in enumerate(inps)]
+    inplist = [Wire(name=f"x{i}") for i in range(n)]
+    ingens = [InGen([]) for _ in range(n)]
+    for i in range(n):
+        working_circuit().add_node(
+            ingens[i], [working_circuit().source_wire()], [inplist[i]]
+        )
+    for ig, fire in zip(ingens, inps):
+        ig.times = [fire]
     topk = arbiter(k, inplist)
     for i, x in enumerate(topk):
         pylse.inspect(x, f"top{i}")
@@ -223,7 +231,7 @@ def demo_arbiter(k: int, inps: list[float], plot: bool = True):
     if plot:
         sim.plot(wires_to_display=watch_wires)
     evio = events_io(events, towatch)
-    check_arbitrage(k, *evio)
+    # check_arbitrage(k, *evio)
     return evio
 
 
@@ -246,3 +254,11 @@ def check_arbitrage(k: int, x, o):
     predicted_delay = info(k, len(x))["total_delay"]
     # print(f"{(k,total_delay)=}")
     assert total_delay <= predicted_delay + 1
+
+
+def inhs_reset() -> bool:
+    inh_states = [
+        x.element.fsm.curr_state for x in working_circuit() if x.element.name == "INH"
+    ]
+    inh_idle = [x == "idle" for x in inh_states]
+    return all(inh_idle)

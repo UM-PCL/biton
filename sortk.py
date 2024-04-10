@@ -17,13 +17,9 @@ def ordarrows(n: int, stride: int, xstride: int) -> list[tuple[int, int]]:
     s = stride * 2
     steps = n // s
     sorarr = [(i, i + stride) for i in range(stride)]
-    joinarr = [(i, s - i -1) for i in range(stride)]
+    joinarr = [(i, s - i - 1) for i in range(stride)]
     arr = sorarr if xstride != 1 else joinarr
-    sarr = [
-        (x * s + i, x * s + j)
-        for x in range(steps)
-        for i, j in arr
-    ]
+    sarr = [(x * s + i, x * s + j) for x in range(steps) for i, j in arr]
     return sarr
 
 
@@ -98,7 +94,7 @@ def mergemax(
     ret1: list[Wire],
     ret2: list[Wire],
 ) -> list[Wire]:
-    res = map(cmax, inps1, reversed(inps2), rets, ret1, reversed(ret2))
+    res = map(cmax, reversed(inps1), inps2, rets, reversed(ret1), ret2)
     return list(res)
 
 
