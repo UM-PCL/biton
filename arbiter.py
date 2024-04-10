@@ -209,7 +209,7 @@ def sim_arbiter(
 def jj_estimation(k, n, clear: bool = False):
     la_jj = 4
     fa_jj = 4
-    inh_jj = 13
+    inh_jj = 4
     droc_jj = 13
     mg_jj = 5
     s_jj = 3
