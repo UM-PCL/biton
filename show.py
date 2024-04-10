@@ -2,10 +2,10 @@ from arbiter import info, sim_arbiter
 from pandas import DataFrame
 
 
-def run_tests(n_runs):
+def run_tests(n_runs: int, clear:bool = False):
     confs = [(2,64),(4,128),(8,256)]
     for k, n in confs:
-        sim_arbiter(k,n,n_runs,False)
+        sim_arbiter(k,n,n_runs,plot=False,clear=clear)
 
 
 def get_data():

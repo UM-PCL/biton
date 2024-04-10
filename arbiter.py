@@ -184,7 +184,8 @@ def sim_arbiter(
     reset_inputs = [total_delay + clk_del * (i + 1) for i in range(n)]
     for i, x in enumerate(topk):
         pylse.inspect(x, f"top{i}")
-    runs = [0] if n_runs == 1 else tqdm(range(n_runs), desc=f"{(k,n)=}")
+    desc = f"{(k,n)=}" if not clear else f"clr{(k,n)=}"
+    runs = [0] if n_runs == 1 else tqdm(range(n_runs), desc=desc)
     for _ in runs:
         samps = clique_sample(n)
         inps: list[float] = [clk_del * (min(x + 1, priority_limit)) for x in samps]
@@ -194,8 +195,14 @@ def sim_arbiter(
         events = sim.simulate()
         if plot:
             sim.plot(wires_to_display=watch_wires)
-        evio = events_io(events, towatch)
-        check_arbitrage(k, *evio, clear=clear)
+        if not clear:
+            evio = events_io(events, towatch)
+            check_arbitrage(k, *evio, clear=clear)
+        else:
+            compute_events, recover_events = reset_events(events, total_delay + 1)
+            evio = events_io(compute_events, towatch)
+            check_arbitrage(k, *evio, clear=False)
+            check_reset(recover_events)
     # return data
 
 
@@ -282,9 +289,28 @@ def check_arbitrage(k: int, x, o, clear: bool = False):
         assert total_delay <= predicted_delay + 1
 
 
-def inhs_reset() -> bool:
+def check_reset(events: dict[str, list[float]]):
+    assert all([len(v) == 1 for v in  events.values()])
+    inh_idle, droc_idle = dro_states()
+    assert all(inh_idle)
+    assert all(droc_idle)
+
+
+def dro_states() -> tuple[list[str], list[str]]:
     inh_states = [
         x.element.fsm.curr_state for x in working_circuit() if x.element.name == "INH"
     ]
+    droc_states = [
+        x.element.fsm.curr_state for x in working_circuit() if x.element.name == "DRO_C"
+    ]
     inh_idle = [x == "idle" for x in inh_states]
-    return all(inh_idle)
+    droc_idle = [x == "idle" for x in droc_states]
+    assert len(inh_idle) > 0
+    assert len(droc_idle) >= 3/2 * len(inh_idle)
+    return inh_idle, droc_idle
+
+
+def reset_events(events: dict[str, list[float]], total_delay: float):
+    first_strike = {k: [x for x in v if x <= total_delay] for k, v in events.items()}
+    second_strike = {k: [x for x in v if x > total_delay] for k, v in events.items()}
+    return first_strike, second_strike
