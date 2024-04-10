@@ -13,6 +13,20 @@ def alt(n: int, x: int) -> list[bool]:
     return [(i // x) % 2 == 1 for i in range(n)]
 
 
+def ordarrows(n: int, stride: int, xstride: int) -> list[tuple[int, int]]:
+    s = stride * 2
+    steps = n // s
+    sorarr = [(i, i + stride) for i in range(stride)]
+    joinarr = [(i, s - i -1) for i in range(stride)]
+    arr = sorarr if xstride != 1 else joinarr
+    sarr = [
+        (x * s + i, x * s + j)
+        for x in range(steps)
+        for i, j in arr
+    ]
+    return sarr
+
+
 def sarrows(n: int, stride: int, xstride: int) -> list[tuple[int, int]]:
     s = stride * 2
     steps = n // s
@@ -44,7 +58,8 @@ def unidirectional_arrows(n):
 
 def layers(n: int, prune=False) -> list[list[tuple[int, int]]]:
     conn_func = carrows if not prune else unidirectional_arrows
-    return [sarrows(*x) for x in conn_func(n)]
+    # return [sarrows(*x) for x in conn_func(n)]
+    return [ordarrows(*x) for x in conn_func(n)]
 
 
 def mklayer(
