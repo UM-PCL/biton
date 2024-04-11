@@ -140,6 +140,10 @@ def info(k, n):
     info_dict["backwards_delay"] = get_back_del(k, n)
     info_dict["total_delay"] = info_dict["return_start"] + info_dict["backwards_delay"]
     info_dict["JJs"] = jj_estimation(k, n)
+    info_dict["temp_jj"], info_dict["reset_jj"] = extra_jj(k, n)
+    info_dict["total_jj"] = (
+        info_dict["JJs"] + info_dict["temp_jj"] + info_dict["reset_jj"]
+    )
     return info_dict
 
 
@@ -177,7 +181,8 @@ def sim_arbiter(
         for x in working_circuit()
         if x.element.name not in ["_Source", "InGen"]
     )
-    est_jj = jj_estimation(k, n, clear)
+    reset_droc_tax = (n - k) * 5
+    est_jj = jj_estimation(k, n) + clear * reset_droc_tax
     assert jjs == est_jj
     # print(f"{(n,k,jjs)=}")
     # print(data)
@@ -227,8 +232,8 @@ def jj_estimation(k, n, clear: bool = False):
     start_blocks = (n // k) // 2
     n_block = start_blocks - 1
     estimate_jj = (start_blocks * block1_jj) + (blockn_jj * n_block)
-    reset_droc_tax = (start_blocks + n_block) * k * mg_jj
-    estimate_jj += clear * reset_droc_tax
+    # reset_droc_tax = (n-k) * mg_jj
+    # estimate_jj += clear * reset_droc_tax
     # assert False
     return int(estimate_jj)
 
@@ -290,7 +295,7 @@ def check_arbitrage(k: int, x, o, clear: bool = False):
 
 
 def check_reset(events: dict[str, list[float]]):
-    assert all([len(v) == 1 for v in  events.values()])
+    assert all([len(v) == 1 for v in events.values()])
     inh_idle, droc_idle = dro_states()
     assert all(inh_idle)
     assert all(droc_idle)
@@ -306,7 +311,7 @@ def dro_states() -> tuple[list[str], list[str]]:
     inh_idle = [x == "idle" for x in inh_states]
     droc_idle = [x == "idle" for x in droc_states]
     assert len(inh_idle) > 0
-    assert len(droc_idle) >= 3/2 * len(inh_idle)
+    assert len(droc_idle) >= 3 / 2 * len(inh_idle)
     return inh_idle, droc_idle
 
 
@@ -314,3 +319,18 @@ def reset_events(events: dict[str, list[float]], total_delay: float):
     first_strike = {k: [x for x in v if x <= total_delay] for k, v in events.items()}
     second_strike = {k: [x for x in v if x > total_delay] for k, v in events.items()}
     return first_strike, second_strike
+
+
+def extra_jj(k, n):
+    jj_s = 3
+    jj_m = 5
+    jjtl = 2
+    jj_temp = 96
+    # spliter tree for 3 addr bits and start signal
+    cost_spl_temp = 4 * (n - 1) * jj_s
+    # cost of temporal encoding
+    cost_temp = jj_temp * n + cost_spl_temp
+    cost_sorted_inps = (n - 1) * (jj_s + 3 * jjtl) + n * jj_m
+    cost_clear = (n - 1) * jj_s + (1 + n - k) * jj_m
+    cost_reset = cost_sorted_inps + cost_clear
+    return cost_temp, cost_reset
