@@ -15,16 +15,21 @@ def check(d: int, anc: np.ndarray):
     down = np.pad(anc, ((2, 0), (0, 0)))
     up = np.pad(anc, ((0, 2), (0, 0)))
     xrs = np.logical_xor(down, up)[1:-1]
-    ancp = np.pad(anc, ((1,1),(1,1)))
-    for i in range(1, d+2):
+    ancp = np.pad(anc, ((1, 1), (1, 1)))
+    for i in range(1, d + 2):
         for j in range(1, d):
-            xnrs[i,j] = ((i+j+1)%2)+(ancp[i+1,j+1]+ancp[i-1,j+1]+ancp[i+1,j-1]+ancp[i-1,j-1])
-    xnrs = 1-(xnrs[1:-1,1:-1]%2)
+            xnrs[i, j] = ((i + j + 1) % 2) + (
+                ancp[i + 1, j + 1]
+                + ancp[i - 1, j + 1]
+                + ancp[i + 1, j - 1]
+                + ancp[i - 1, j - 1]
+            )
+    xnrs = 1 - (xnrs[1:-1, 1:-1] % 2)
     cmpx = xnrs * anc
     return anc, xrs, xnrs, cmpx
 
 
-def grid(d: int, plot= False):
+def grid(d: int, plot=False):
     working_circuit().reset()
     anc = np.zeros((d + 1, d - 1))
     anc[::2, 1::2] = 1
@@ -100,7 +105,7 @@ def grid(d: int, plot= False):
     hmx = np.zeros(anc.shape)
     for i, v in getxn.items():
         hmx[i] = v
-    getxr = {k: len(events[f"xr{k}"]) for k,v in fvert.items() if len(v) != 1}
+    getxr = {k: len(events[f"xr{k}"]) for k, v in fvert.items() if len(v) != 1}
     hmr = np.zeros(anc.shape)
     for i, v in getxr.items():
         hmr[i] = v
@@ -114,7 +119,9 @@ def grid(d: int, plot= False):
     assert np.all(cmpx == hcm)
     # import IPython
     # IPython.embed()
-    return events, sind, hmr, hmx, hcm, check(d, sind)
+    jjs = get_jj()
+    late = get_latency(events)
+    return jjs, late, events, (sind, hmr, hmx, hcm), check(d, sind)
 
 
 def syndromes(
@@ -123,6 +130,18 @@ def syndromes(
     synd_times = [[10] * bool(x) for x in synd_array]
     synd_wires = {xy: inp_at(*syn, name=f"syn{xy}") for syn, xy in zip(synd_times, pos)}
     return synd_wires
+
+
+def get_latency(events: dict[str, list[float]]) -> float:
+    return max(max(v, default=0) for v in events.values())
+
+
+def get_jj():
+    return sum(
+        x.element.jjs
+        for x in working_circuit()
+        if x.element.name not in ["_Source", "InGen"]
+    )
 
 
 # if __name__ == "__main__":
