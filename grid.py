@@ -5,8 +5,7 @@ from sfq_cells2 import and_s, inv, jtl_chain, s, xor_s, xnor_s, split
 grab = working_circuit().get_wire_by_name
 
 
-def check(anc):
-    d = 5
+def check(d: int, anc: np.ndarray):
     xnrs = np.zeros((d + 3, d + 1))
     # bs0 = np.array(bsynd[::2])
     # bs0.resize((3, 2))
@@ -25,9 +24,8 @@ def check(anc):
     return anc, xrs, xnrs, cmpx
 
 
-def main(plot= False):
+def grid(d: int, plot= False):
     working_circuit().reset()
-    d = 5
     anc = np.zeros((d + 1, d - 1))
     anc[::2, 1::2] = 1
     anc[1::2, ::2] = 1
@@ -54,8 +52,10 @@ def main(plot= False):
     assert len(symptom_par) == np.ceil((d - 1) ** 2 / 2 + d - 1)
     clk = inp_at(20, name="clk")
     clk1, clks1 = s(clk)
-    clkj1 = jtl_chain(clks1, 3)
-    clk2, slks2 = s(clkj1)
+    clkj1 = jtl_chain(clks1, 6)
+    clk2, clks2 = s(clkj1)
+    clkj2 = jtl_chain(clks2, 6)
+    clk3, clks3 = s(clkj2)
     l1cls = dict(zip(validvert.keys(), split(clk1, n=nclk)))
     l1 = {
         k: opers[0]
@@ -79,10 +79,11 @@ def main(plot= False):
     # nclkx: int = int(np.ceil(d / 2) * (d-3))
     # assert len(validhor) == nclkx
     l2cls = dict(zip(xa, split(clk2, n=len(xa))))
+    l3cls = dict(zip(xa, split(clk3, n=len(xa))))
     l2 = {}
     for k, opers in fhor.items():
-        loclk1, loclks1 = s(l2cls[k])
-        loclk2 = jtl_chain(loclks1, 6)
+        loclk1 = l2cls[k]
+        loclk2 = l3cls[k]
         if len(opers) == 1:
             reven = inv(opers[0], loclk1, name=f"xnr{k}")
         else:
@@ -107,19 +108,19 @@ def main(plot= False):
     hcm = np.zeros(anc.shape)
     for i, v in getcm.items():
         hcm[i] = v
-    _, xrs, xnrs, cmpx = check(sind)
+    _, xrs, xnrs, cmpx = check(d, sind)
     assert np.all(xrs[1:-1] == hmr[1:-1])
     assert np.all(xnrs == hmx)
     assert np.all(cmpx == hcm)
     # import IPython
     # IPython.embed()
-    return events, sind, hmr, hmx, hcm, check(sind)
+    return events, sind, hmr, hmx, hcm, check(d, sind)
 
 
 def syndromes(
     pos: list[tuple[int, int]], synd_array: np.ndarray
 ) -> dict[tuple[int, int], Wire]:
-    synd_times = [[10] * x for x in synd_array]
+    synd_times = [[10] * bool(x) for x in synd_array]
     synd_wires = {xy: inp_at(*syn, name=f"syn{xy}") for syn, xy in zip(synd_times, pos)}
     return synd_wires
 

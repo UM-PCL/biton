@@ -643,7 +643,7 @@ class XNOR(SFQ):
     Default JJ numbers come from [4].
     """
 
-    _setup_time = 7.4
+    _setup_time = 7.4 + 1e-2
     _hold_time = 7.7
 
     name = "XNOR"
