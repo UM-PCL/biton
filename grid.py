@@ -143,6 +143,10 @@ def get_jj():
         if x.element.name not in ["_Source", "InGen"]
     )
 
+def get_gridspecs(d: int, n_runs:int):
+    lates = [la for _, la, _,_,_ in [grid(d=d) for _ in range(n_runs)]]
+    jj = get_jj()
+    return {"d":d, "jj":jj, "latency":max(lates)}
 
 # if __name__ == "__main__":
 #     main()
