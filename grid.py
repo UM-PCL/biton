@@ -5,7 +5,28 @@ from sfq_cells2 import and_s, inv, jtl_chain, s, xor_s, xnor_s, split
 grab = working_circuit().get_wire_by_name
 
 
-def main():
+def check(anc):
+    d = 5
+    xnrs = np.zeros((d + 3, d + 1))
+    # bs0 = np.array(bsynd[::2])
+    # bs0.resize((3, 2))
+    # bs1 = np.array(bsynd[1::2])
+    # bs1.resize((3, 2))
+    # anc[::2, 1::2], anc[1::2, ::2] = bs0, bs1
+    down = np.pad(anc, ((2, 0), (0, 0)))
+    up = np.pad(anc, ((0, 2), (0, 0)))
+    xrs = np.logical_xor(down, up)[1:-1]
+    ancp = np.pad(anc, ((1,1),(1,1)))
+    for i in range(1, d+2):
+        for j in range(1, d):
+            xnrs[i,j] = ((i+j+1)%2)+(ancp[i+1,j+1]+ancp[i-1,j+1]+ancp[i+1,j-1]+ancp[i-1,j-1])
+    xnrs = 1-(xnrs[1:-1,1:-1]%2)
+    cmpx = xnrs * anc
+    return anc, xrs, xnrs, cmpx
+
+
+def main(plot= False):
+    working_circuit().reset()
     d = 5
     anc = np.zeros((d + 1, d - 1))
     anc[::2, 1::2] = 1
@@ -14,13 +35,10 @@ def main():
     nx = [(i, j) for i, j in np.argwhere(anc == 0)]
     bsynd = np.random.choice([True, False], len(xa), p=[0.3, 0.7])
     symptoms = syndromes(xa, bsynd)
-    sympt = {k: s(v) for k,v in symptoms.items()}
-    symptom_par = {k: v[0] for k,v in sympt.items()}
-    symptom_sel = {k: v[1] for k,v in sympt.items()}
-    topdown = {
-        k: split(a)
-        for k, a in symptom_par.items()
-    }
+    sympt = {k: s(v) for k, v in symptoms.items()}
+    symptom_par = {k: v[0] for k, v in sympt.items()}
+    symptom_sel = {k: v[1] for k, v in sympt.items()}
+    topdown = {k: split(a) for k, a in symptom_par.items()}
     vert = [((i - 1, j), (i + 1, j)) for i, j in nx]
     fvert = {}
     for k, (a, b) in zip(nx, vert):
@@ -64,7 +82,7 @@ def main():
     l2 = {}
     for k, opers in fhor.items():
         loclk1, loclks1 = s(l2cls[k])
-        loclk2 = jtl_chain(loclks1, 2)
+        loclk2 = jtl_chain(loclks1, 6)
         if len(opers) == 1:
             reven = inv(opers[0], loclk1, name=f"xnr{k}")
         else:
@@ -72,7 +90,30 @@ def main():
         l2[k] = and_s(reven, symptom_sel[k], loclk2, name=f"cmx{k}")
     sim = Simulation()
     events = sim.simulate()
-    sim.plot()
+    if plot:
+        sim.plot()
+    sind = np.zeros(anc.shape)
+    for i, v in zip(xa, bsynd):
+        sind[i] = v
+    getxn = {k: len(events[f"xnr{k}"]) for k in xa}
+    hmx = np.zeros(anc.shape)
+    for i, v in getxn.items():
+        hmx[i] = v
+    getxr = {k: len(events[f"xr{k}"]) for k,v in fvert.items() if len(v) != 1}
+    hmr = np.zeros(anc.shape)
+    for i, v in getxr.items():
+        hmr[i] = v
+    getcm = {k: len(events[f"cmx{k}"]) for k in xa}
+    hcm = np.zeros(anc.shape)
+    for i, v in getcm.items():
+        hcm[i] = v
+    _, xrs, xnrs, cmpx = check(sind)
+    assert np.all(xrs[1:-1] == hmr[1:-1])
+    assert np.all(xnrs == hmx)
+    assert np.all(cmpx == hcm)
+    # import IPython
+    # IPython.embed()
+    return events, sind, hmr, hmx, hcm, check(sind)
 
 
 def syndromes(
@@ -83,5 +124,5 @@ def syndromes(
     return synd_wires
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
