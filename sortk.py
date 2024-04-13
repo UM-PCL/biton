@@ -4,10 +4,9 @@ from random import choice
 from itertools import groupby
 from math import inf
 from typing import Dict
-from inhibitor import cmax, comp
+from inhibitor import cmax, comp, simple_comp
 from pylse import Wire
 import pylse
-
 from sfq_cells2 import M
 
 
@@ -72,6 +71,25 @@ def mklayer(
             inplist[i], inplist[j], retin[i], retin[j], retback[i], retback[j]
         )
     return o
+
+
+def simple_layer(
+    lcons: list[tuple[int, int]],
+    inplist: list[Wire],
+) -> list[Wire]:
+    o = [Wire() for _ in inplist]
+    for i, j in lcons:
+        o[i], o[j] = simple_comp(inplist[i], inplist[j])
+    return o
+
+
+def simple_sortk(inplist: list[Wire]) -> list[Wire]:
+    "sortk without return"
+    n = len(inplist)
+    f = inplist
+    for layer in layers(n):
+        f = simple_layer(layer, f)
+    return f
 
 
 def sortk(
@@ -143,6 +161,30 @@ def demo_mmax(il1: list[float], il2: list[float], rls: list[bool], plot: bool = 
     return events
 
 
+def demo_simple_sortk(ils: list[float], plot: bool = True):
+    pylse.working_circuit().reset()
+    n = len(ils)
+    ilx = [[x]*(x<2000) for x in ils]
+    inplist = [pylse.inp_at(*x, name=f"x{i}") for i, x in enumerate(ilx)]
+    o = simple_sortk(inplist)
+    for i, x in enumerate(o):
+        pylse.inspect(x, f"o{i}")
+    sim = pylse.Simulation()
+    events = sim.simulate()
+    towatch = ["x", "o"]
+    watchers = [[f"{x}{i}" for i in range(n)] for x in towatch]
+    watch_wires = sum(watchers, [])
+    if plot:
+        sim.plot(wires_to_display=watch_wires)
+    xs, os = events_io(events, towatch)
+    hxs = len([x < inf for x in xs])
+    hos = len([x < inf for x in os])
+    oz = [max(x, 2000) for x in os]
+    xz = [max(x, 2000) for x in xs]
+    assert hxs == hos
+    assert oz == sorted(xz)
+
+
 def demo_sortk(ils: list[float], rls: list[bool], plot: bool = True):
     pylse.working_circuit().reset()
     n = len(ils)
@@ -174,12 +216,14 @@ def quick_mmax(n, plot: bool = True):
     demo_mmax(ils1, ils2, rls, plot)
 
 
-def quick_sort(n, plot: bool = True):
-    rls = [choice([True, False]) for _ in range(n)]
-    # ils: list[float] = list(range(10, (n + 1) * 10, 10))
-    # shuffle(ils)
-    ils: list[float] = [choice(range(6)) * 10 + 10 for _ in range(n)]
-    demo_sortk(ils, rls, plot)
+def quick_sort(n, plot: bool = True, simple: bool = False):
+    if simple:
+        ils = [choice([10, inf]) for _ in range(n)]
+        demo_simple_sortk(ils, plot)
+    else:
+        rls = [choice([True, False]) for _ in range(n)]
+        ils: list[float] = [choice(range(6)) * 10 + 10 for _ in range(n)]
+        demo_sortk(ils, rls, plot)
 
 
 def events_io(events: Dict[str, list[float]], matchs: list[str]) -> list[list[float]]:

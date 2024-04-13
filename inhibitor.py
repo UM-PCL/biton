@@ -31,6 +31,17 @@ def comp(a, b, ret_min, ret_max, ret_a, ret_b):
     return xmin, xmax
 
 
+def simple_comp(a, b) -> tuple[Wire, Wire]:
+    "2-comparator without return"
+    a2, a1 = s(a)
+    b2, b1 = s(b)
+    # Mixmax part
+    xmax, xmin = Wire(), Wire()
+    nu(C(), [a1, b1], [xmax])
+    nu(C_INV(), [a2, b2], [xmin])
+    return xmin, xmax
+
+
 def cmax(a: Wire, b: Wire, ret: Wire, ret_a: Wire, ret_b: Wire) -> Wire:
     ax, a1 = s(a)
     bx, b1 = s(b)
