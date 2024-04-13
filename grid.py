@@ -1,6 +1,7 @@
 import numpy as np
 from pylse import Wire, working_circuit, inp_at, Simulation
 from sfq_cells2 import and_s, inv, jtl_chain, s, xor_s, xnor_s, split
+from helpers import get_jj, get_latency
 
 grab = working_circuit().get_wire_by_name
 
@@ -131,17 +132,6 @@ def syndromes(
     synd_wires = {xy: inp_at(*syn, name=f"syn{xy}") for syn, xy in zip(synd_times, pos)}
     return synd_wires
 
-
-def get_latency(events: dict[str, list[float]]) -> float:
-    return max(max(v, default=0) for v in events.values())
-
-
-def get_jj():
-    return sum(
-        x.element.jjs
-        for x in working_circuit()
-        if x.element.name not in ["_Source", "InGen"]
-    )
 
 def get_gridspecs(d: int, n_runs:int):
     lates = [la for _, la, _,_,_ in [grid(d=d) for _ in range(n_runs)]]
