@@ -150,10 +150,10 @@ def chkembd(d,time, bsynd, t):
     # print(f"{(n_quad, t, code,encod)=}")
     assert abs(code - encoded) < 1e-3
 
-def hacky_integration_test():
+def hacky_integration_test(d: int):
     for _ in tqdm(range(1000)):
-        ev, dl, sin, t = demo_embed(d=7, force_zero=False)
-        chkembd(7,dl,sin,t)
+        ev, dl, sin, t = demo_embed(d=d, force_zero=False)
+        chkembd(d,dl,sin,t)
 
 def demo_tenc(
     set_flags: list[bool], ordering: tuple[list[int], list[int]], t: bool
@@ -247,7 +247,8 @@ def est_mtreetime(n: int):
 
 def est_priodelay(n: int):
     mt = est_mtreetime(n)
+    norm_mtree = ceil(mt/3.5)*3.5
     temp_base = calculate()[1]
-    start_temp = mt + 5.1 + 17 * 3.5
+    start_temp = norm_mtree + 5.1 + 17 * 3.5
     est = start_temp + temp_base
     return est
