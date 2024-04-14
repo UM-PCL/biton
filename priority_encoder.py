@@ -1,6 +1,7 @@
 from math import ceil, log2
 from tqdm import tqdm
 from numpy.random import choice
+from grid import gridx, quadrant_flags, sample_synd
 from helpers import get_jj, get_latency, sample_synd9
 from pylse import inp_at, inspect, working_circuit, Wire, Simulation
 from sfq_cells2 import dro, jtl_chain, m, s, split
@@ -109,6 +110,46 @@ def quick_prio(n_runs: int = 100):
         cpx = sample_synd9()
         eval_prio(cpx, t)
 
+
+def demo_embed(d: int, force_zero: bool):
+    "evaluate syndromes and tgate flag to temporal encoding"
+    working_circuit().reset()
+    t = bool(choice([False, True], p=[0.75, 0.25]))
+    clkg = inp_at(20, name="power")
+    bsynd = sample_synd(d)
+    if force_zero:
+        bsynd = bsynd * 0
+    flags = gridx(d, bsynd, clkg)
+    hscore = quadrant_flags(d, bsynd)
+    nt = not t
+    ti, nti = [10] * t, [10] * nt
+    tx, ntx = inp_at(*ti, name="Tp"), inp_at(*nti, name="Tn")
+    start_time = est_mtreetime(
+        len(flags)
+    )  # Yes I know mtree is n/4, left extra for safety
+    clk = inp_at(start_time + 200, name="start")
+    enc = qubit_priority(flags, clk, tx, ntx)
+    inspect(enc, "enc")
+    sim = Simulation()
+    events = sim.simulate()
+    timer = events["enc"][0]
+    return events, timer, bsynd, t
+
+def chkembd(d,time, bsynd, t):
+    d0 = est_priodelay(len(bsynd)) + 200
+    n_quad = quadrant_flags(d,bsynd)
+    code = anord[t][n_quad - 1] if n_quad > 0 else 0
+    basetime = d0
+    extra_time = time - basetime
+    encoded = extra_time / dt
+    encod = round(encoded, 2)
+    # print(f"{(n_quad, t, code,encod)=}")
+    assert abs(code - encoded) < 1e-3
+
+def hacky_integration_test():
+    for _ in tqdm(range(1000)):
+        ev, dl, sin, t = demo_embed(d=7, force_zero=False)
+        chkembd(7,dl,sin,t)
 
 def demo_tenc(
     set_flags: list[bool], ordering: tuple[list[int], list[int]], t: bool
