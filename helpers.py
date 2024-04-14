@@ -3,21 +3,31 @@ from pylse import working_circuit
 from numpy.random import choice
 
 
+def xcnt(d: int) -> int:
+    "Number of X ancillas for distance d"
+    n = (d - 1) ** 2 // 2 + d - 1
+    return n
+
+
 def get_latency(events: dict[str, list[float]]) -> float:
+    "Timestamp of latest pulse in event dict"
     return max(max(v, default=0) for v in events.values())
 
 
 def get_jj():
+    "Number of JJ in working_circuit directly from pylse"
     return sum(
-        x.element.jjs
+        x.element.jjs # type: ignore
         for x in working_circuit()
         if x.element.name not in ["_Source", "InGen"]
     )
 
 
 def sample_synd9():
+    """Randomly distributed syndrome errors with
+    propabilities from d=9,5% simulation"""
     d = 9
-    n = (d - 1) ** 2 // 2 + d - 1
+    n = xcnt(d)
     n_cpx = choice(range(len(pd9p5e2)), p=pd9p5e2)
     arr = [True] * n_cpx + [False] * (n - n_cpx)
     shuffle(arr)

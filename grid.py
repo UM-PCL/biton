@@ -1,8 +1,9 @@
+from math import ceil, log2
 import numpy as np
 from numpy.core.multiarray import ndarray
 from pylse import Wire, working_circuit, inp_at, Simulation
 from sfq_cells2 import and_s, inv, jtl_chain, s, xor_s, xnor_s, split
-from helpers import get_jj, get_latency
+from helpers import get_jj, get_latency, xcnt
 
 grab = working_circuit().get_wire_by_name
 
@@ -268,6 +269,16 @@ def get_gridspecs(d: int, n_runs:int):
     lates = [la for _, la, _,_,_ in [grid(d=d) for _ in range(n_runs)]]
     jj = get_jj()
     return {"d":d, "jj":jj, "latency":max(lates)}
+
+
+def late_est(d: int)-> float:
+    n = xcnt(d)
+    gen_clk = 20
+    third_ck = gen_clk + 3*5.1+ 2*6*3.5
+    spltree = ceil(log2(n)) * 5.1
+    d_and = 5.0
+    dcpx = third_ck + spltree + d_and
+    return dcpx
 
 # if __name__ == "__main__":
 #     main()
