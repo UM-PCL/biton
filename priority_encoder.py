@@ -1,5 +1,7 @@
 from math import ceil, log2
-from helpers import get_jj, get_latency
+from tqdm import tqdm
+from numpy.random import choice
+from helpers import get_jj, get_latency, sample_synd9
 from pylse import inp_at, inspect, working_circuit, Wire, Simulation
 from sfq_cells2 import dro, jtl_chain, m, s, split
 from sortk import simple_sortk
@@ -97,8 +99,15 @@ def eval_prio(flags: list[bool], t: bool):
     extra_time = time - basetime
     encoded = extra_time / dt
     encod = round(encoded, 2)
-    print(f"{(n_quad, t, code,encod)=}")
+    # print(f"{(n_quad, t, code,encod)=}")
     assert abs(code - encoded) < 1e-3
+
+
+def quick_prio(n_runs: int = 100):
+    for _ in tqdm(range(n_runs), desc="Prio_enc d=9"):
+        t = bool(choice([False, True], p=[0.75, 0.25]))
+        cpx = sample_synd9()
+        eval_prio(cpx, t)
 
 
 def demo_tenc(
