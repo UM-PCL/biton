@@ -132,7 +132,9 @@ class M(SFQ):
     inputs = ["a", "b"]
     outputs = ["q"]
     firing_delay = 6.3
-    _hold_time = 5
+    # Cant have hold time in merge tree
+    # _hold_time = 5
+    _hold_time = 0
     transitions = [
         {
             "source": "idle",
