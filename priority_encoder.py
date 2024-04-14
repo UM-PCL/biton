@@ -1,8 +1,8 @@
 from math import ceil, log2
 from tqdm import tqdm
 from numpy.random import choice
-from grid import gridx, quadrant_flags, sample_synd
-from helpers import get_jj, get_latency, sample_synd9
+from grid import gridx, late_est, quadrant_flags, sample_synd
+from helpers import get_jj, get_latency, sample_synd9, xcnt
 from pylse import inp_at, inspect, working_circuit, Wire, Simulation
 from sfq_cells2 import dro, jtl_chain, m, s, split
 from sortk import simple_sortk
@@ -119,7 +119,7 @@ def demo_embed(d: int, force_zero: bool):
     bsynd = sample_synd(d)
     if force_zero:
         bsynd = bsynd * 0
-    flags = gridx(d, bsynd, clkg)
+    flags, prop_clk = gridx(d, bsynd, clkg)
     hscore = quadrant_flags(d, bsynd)
     nt = not t
     ti, nti = [10] * t, [10] * nt
@@ -127,7 +127,9 @@ def demo_embed(d: int, force_zero: bool):
     start_time = est_mtreetime(
         len(flags)
     )  # Yes I know mtree is n/4, left extra for safety
-    clk = inp_at(start_time + 200, name="start")
+    mtree_catchup = ceil(start_time / 3.5)
+    clk = jtl_chain(prop_clk, mtree_catchup, names="start")
+    # clk = inp_at(start_time + 200, name="start")
     enc = qubit_priority(flags, clk, tx, ntx)
     inspect(enc, "enc")
     sim = Simulation()
@@ -136,7 +138,9 @@ def demo_embed(d: int, force_zero: bool):
     return events, timer, bsynd, t
 
 def chkembd(d,time, bsynd, t):
-    d0 = est_priodelay(len(bsynd)) + 200
+    n = xcnt(d)
+    grid_del, _ =  late_est(d)
+    d0 = est_priodelay(n) + grid_del
     n_quad = quadrant_flags(d,bsynd)
     code = anord[t][n_quad - 1] if n_quad > 0 else 0
     basetime = d0

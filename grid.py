@@ -95,6 +95,8 @@ def gridx(d: int, bsynd: np.ndarray, clk: Wire):
     clk2, clks2 = s(clkj1)
     clkj2 = jtl_chain(clks2, 6)
     clk3, clks3 = s(clkj2)
+    catchup_jtl = late_est(d)[1]
+    propag_clk = jtl_chain(clks3, catchup_jtl)
     l1cls = dict(zip(validvert.keys(), split(clk1, n=nclk)))
     l1 = {
         k: opers[0]
@@ -130,7 +132,7 @@ def gridx(d: int, bsynd: np.ndarray, clk: Wire):
         l2[k] = and_s(reven, symptom_sel[k], loclk2, name=f"cmx{k}")
     # yes it returns in order
     cpx = [l2[k] for k in xa]
-    return cpx
+    return cpx, propag_clk
 
 def sample_synd(d: int):
     xcnt = (d-1)**2 // 2 + d -1 
@@ -142,7 +144,7 @@ def gridaround(d: int, plot=False):
     shp = (d + 1, d - 1)
     bsynd = sample_synd(d)
     clk = inp_at(20, name="clk")
-    cpx = gridx(d, bsynd, clk)
+    cpx, prop_clk = gridx(d, bsynd, clk)
     sim = Simulation()
     events = sim.simulate()
     if plot:
@@ -271,14 +273,15 @@ def get_gridspecs(d: int, n_runs:int):
     return {"d":d, "jj":jj, "latency":max(lates)}
 
 
-def late_est(d: int)-> float:
+def late_est(d: int)-> tuple[float, int]:
     n = xcnt(d)
     gen_clk = 20
     third_ck = gen_clk + 3*5.1+ 2*6*3.5
     spltree = ceil(log2(n)) * 5.1
     d_and = 5.0
-    dcpx = third_ck + spltree + d_and
-    return dcpx
+    cachup_jtl = ceil((spltree + d_and) / 3.5)
+    dcpx = third_ck + cachup_jtl * 3.5
+    return dcpx, cachup_jtl
 
 # if __name__ == "__main__":
 #     main()
