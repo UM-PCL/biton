@@ -38,6 +38,8 @@ def temporal_encode(
     "temporaly encode priorities from quadrant outputs"
     start_t, start_nt = s(clk)
     ctrl_flags = simple_sortk(set_flags)
+    for i, x in enumerate(ctrl_flags):
+        inspect(x,f"ctrl{i}")
     ctrls_t, ctrls_not = zip(*(map(s, ctrl_flags)))
     t_delays = [ratio * x for x in ordering[1]]
     nt_delays = [ratio * x for x in ordering[0]]
@@ -51,7 +53,7 @@ def temporal_encode(
 
 def demo_tenc(
     set_flags: list[bool], ordering: tuple[list[int], list[int]], t: bool
-) -> float:
+) -> tuple[dict[str, list[float]], float]:
     "evaluate disjoint set inputs, t flag and configuration to delay/raw temp encoding"
     working_circuit().reset()
     ilist = [[10] * x for x in set_flags]
@@ -59,18 +61,28 @@ def demo_tenc(
     nt = not t
     ti, nti = [10] * t, [10] * nt
     tx, ntx = inp_at(*ti, name="Tp"), inp_at(*nti, name="Tn")
-    clk = inp_at(100, name="start")
+    start_time, _ = calculate()
+    clk = inp_at(start_time + 20, name="start")
     enc = temporal_encode(insets, ordering, clk, tx, ntx)
     inspect(enc, "enc")
     sim = Simulation()
     events = sim.simulate()
     timer = events["enc"][0] - events["start"][0]
-    return timer
+    return events, timer
+
+
+def predelay():
+    z = [0] * 4
+    ev, _ = demo_tenc([True] * 4, (z, z), False)
+    keys = [f"ctrl{i}" for i in range(4)]
+    whens = [max(ev[k], default=0) for k in keys]
+    predelay = max(whens) - 10
+    return predelay
 
 
 def del_0():
     z = [0] * 4
-    delay = demo_tenc([False] * 4, (z, z), False)
+    _, delay = demo_tenc([False] * 4, (z, z), False)
     return delay
 
 
@@ -79,20 +91,33 @@ def full_tenc(ordering: tuple[list[int], list[int]]):
     bull4 = [list(x) for x in product(bulls, repeat=4)]
     configs = product(bull4, [False, True])
     outcomes = {
-        (tuple(setf), t): demo_tenc(setf, ordering, t) for setf, t in configs
+        (tuple(setf), t): demo_tenc(setf, ordering, t)[1] for setf, t in configs
     }
     return outcomes
 
 
 def check_tenc(ordering: tuple[list[int], list[int]]):
     outcomes = full_tenc(ordering)
-    baseline = del_0()
+    baseline = calculate()[1]
     for (setf, t), enc in outcomes.items():
         v = sum(setf)
         ought = ordering[t][v-1] if v>0 else 0
         normalized = (enc - baseline) / dt
         print(f"{(ought, normalized)=}")
         assert abs(ought - normalized) < 1e-3
+    sort_del, temp_del = calculate()
+    enc_del = sort_del + temp_del + 10
+    jjj = get_jj()
+    return enc_del, jjj
 
 
 anord = ([1,1,4,5],[2,3,6,7])
+
+
+def calculate():
+    comp_del = 8.8 + 5.1
+    sort_del = 3 * comp_del
+    route_del = 9.5 + 6.3
+    baseline = 5.1 + 3.6 + 6.3 + 4*route_del
+    # actual encoding "delay" is counted in arbiter delay
+    return sort_del, baseline

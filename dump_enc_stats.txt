@@ -1,0 +1,1 @@
+encoder: delay=130ps, jj=328
