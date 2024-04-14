@@ -1,5 +1,6 @@
 from itertools import product
 from math import ceil, log2
+from pandas import DataFrame
 
 from numpy import ndarray
 from numpy.random import choice
@@ -35,11 +36,17 @@ def setscores(flags: list[Wire], clk: Wire) -> list[Wire]:
     clks = split(clk, n=4)
     return list(map(sync_mtree, subsets, clks))
 
+def mtr_wait(n: int) -> int:
+    x = est_mtreetime(n)
+    return ceil(x/3.5)
+
 
 def qubit_priority(cpx: list[Wire], clk: Wire, t: Wire, nt: Wire) -> Wire:
     clk_score, clk_start0 = s(clk)
     scores = setscores(cpx, clk_score)
-    clk_start = jtl_chain(clk_start0, 17, names="clk_t")
+    # Why did I have 17 here, 12 is the 
+    jtl_wait_sort = 17
+    clk_start = jtl_chain(clk_start0, jtl_wait_sort, names="clk_t")
     enc = temporal_encode(scores, anord, clk_start, t, nt)
     return enc
 
@@ -135,9 +142,13 @@ def demo_embed(d: int, t: bool, bsynd: ndarray, clkg: Wire):
     tx, ntx = inp_at(*ti, name="Tp"), inp_at(*nti, name="Tn")
     flags, prop_clk = gridx(d, bsynd, clkg)
     n = xcnt(d)
-    start_time = est_mtreetime(n)  # Yes I know mtree is n/4, left extra for safety
+    start_time = est_mtreetime(ceil(n/4))  # Yes I know mtree is n/4, left extra for safety
     mtree_catchup = ceil(start_time / 3.5)
-    clk = jtl_chain(prop_clk, mtree_catchup, names="start")
+    if mtree_catchup >= 1:
+        clk = jtl_chain(prop_clk, mtree_catchup, names="start")  
+    else:
+        clk = prop_clk
+        inspect(clk, "start")
     enc = qubit_priority(flags, clk, tx, ntx)
     return enc
 
@@ -252,9 +263,30 @@ def est_mtreetime(n: int):
 
 
 def est_priodelay(n: int):
-    mt = est_mtreetime(n)
+    mt = est_mtreetime(ceil(n/4))
     norm_mtree = ceil(mt / 3.5) * 3.5
     temp_base = calculate()[1]
-    start_temp = norm_mtree + 5.1 + 17 * 3.5
+    jtl_wait_sort = 17
+    start_temp = norm_mtree + 5.1 + jtl_wait_sort * 3.5
     est = start_temp + temp_base
     return est
+
+def time_data(d: int):
+    n = xcnt(d)
+    x = {}
+    x["d"] = d
+    x["t_grid"] = late_est(d)[0]
+    x["t_mtree"] = est_mtreetime(ceil(n/4))
+    x["t_sort"], x["t_encode"] = calculate()
+    t_prio = est_priodelay(n)
+    hm =x["t_mtree"] + x["t_encode"] + x["t_sort"]
+    x["t_intercon"] = t_prio - hm
+    x["t_priority"] = t_prio + x["t_grid"]
+    return x
+
+def time_df():
+    t_records = [time_data(d) for d in range(3,22,2)]
+    df = DataFrame.from_records(t_records)
+    return df
+    
+
