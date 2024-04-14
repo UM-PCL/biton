@@ -1,13 +1,16 @@
+from itertools import product
 from math import ceil, log2
-from tqdm import tqdm
+
+from numpy import ndarray
 from numpy.random import choice
+from pylse import Simulation, Wire, inp_at, inspect, working_circuit
+from tqdm import tqdm
+
 from grid import gridx, late_est, quadrant_flags, sample_synd
-from helpers import get_jj, get_latency, sample_synd9, xcnt
-from pylse import inp_at, inspect, working_circuit, Wire, Simulation
+from helpers import get_jj, sample_synd9, xcnt
 from sfq_cells2 import dro, jtl_chain, m, s, split
 from sortk import simple_sortk
-from temp_prior import monotone_del, coarse_delay
-from itertools import product
+from temp_prior import coarse_delay, monotone_del
 
 min_dt = 10
 dt, ratio = coarse_delay(min_dt)
@@ -99,7 +102,6 @@ def eval_prio(flags: list[bool], t: bool):
     basetime = est_priodelay(n)
     extra_time = time - basetime
     encoded = extra_time / dt
-    encod = round(encoded, 2)
     # print(f"{(n_quad, t, code,encod)=}")
     assert abs(code - encoded) < 1e-3
 
@@ -111,49 +113,53 @@ def quick_prio(n_runs: int = 100):
         eval_prio(cpx, t)
 
 
-def demo_embed(d: int, force_zero: bool):
-    "evaluate syndromes and tgate flag to temporal encoding"
+def wrap_embed(d: int, force_zero: bool):
     working_circuit().reset()
     t = bool(choice([False, True], p=[0.75, 0.25]))
     clkg = inp_at(20, name="power")
     bsynd = sample_synd(d)
     if force_zero:
         bsynd = bsynd * 0
-    flags, prop_clk = gridx(d, bsynd, clkg)
-    hscore = quadrant_flags(d, bsynd)
-    nt = not t
-    ti, nti = [10] * t, [10] * nt
-    tx, ntx = inp_at(*ti, name="Tp"), inp_at(*nti, name="Tn")
-    start_time = est_mtreetime(
-        len(flags)
-    )  # Yes I know mtree is n/4, left extra for safety
-    mtree_catchup = ceil(start_time / 3.5)
-    clk = jtl_chain(prop_clk, mtree_catchup, names="start")
-    # clk = inp_at(start_time + 200, name="start")
-    enc = qubit_priority(flags, clk, tx, ntx)
+    enc = demo_embed(d, t, bsynd, clkg)
     inspect(enc, "enc")
     sim = Simulation()
     events = sim.simulate()
     timer = events["enc"][0]
     return events, timer, bsynd, t
 
-def chkembd(d,time, bsynd, t):
+
+def demo_embed(d: int, t: bool, bsynd: ndarray, clkg: Wire):
+    "evaluate syndromes and tgate flag to temporal encoding"
+    nt = not t
+    ti, nti = [0] * t, [0] * nt
+    tx, ntx = inp_at(*ti, name="Tp"), inp_at(*nti, name="Tn")
+    flags, prop_clk = gridx(d, bsynd, clkg)
     n = xcnt(d)
-    grid_del, _ =  late_est(d)
+    start_time = est_mtreetime(n)  # Yes I know mtree is n/4, left extra for safety
+    mtree_catchup = ceil(start_time / 3.5)
+    clk = jtl_chain(prop_clk, mtree_catchup, names="start")
+    enc = qubit_priority(flags, clk, tx, ntx)
+    return enc
+
+
+def chkembd(d, time, bsynd, t):
+    n = xcnt(d)
+    grid_del, _ = late_est(d)
     d0 = est_priodelay(n) + grid_del
-    n_quad = quadrant_flags(d,bsynd)
+    n_quad = quadrant_flags(d, bsynd)
     code = anord[t][n_quad - 1] if n_quad > 0 else 0
     basetime = d0
     extra_time = time - basetime
     encoded = extra_time / dt
-    encod = round(encoded, 2)
     # print(f"{(n_quad, t, code,encod)=}")
     assert abs(code - encoded) < 1e-3
 
+
 def hacky_integration_test(d: int):
     for _ in tqdm(range(1000)):
-        ev, dl, sin, t = demo_embed(d=d, force_zero=False)
-        chkembd(d,dl,sin,t)
+        _, dl, sin, t = wrap_embed(d=d, force_zero=False)
+        chkembd(d, dl, sin, t)
+
 
 def demo_tenc(
     set_flags: list[bool], ordering: tuple[list[int], list[int]], t: bool
@@ -247,7 +253,7 @@ def est_mtreetime(n: int):
 
 def est_priodelay(n: int):
     mt = est_mtreetime(n)
-    norm_mtree = ceil(mt/3.5)*3.5
+    norm_mtree = ceil(mt / 3.5) * 3.5
     temp_base = calculate()[1]
     start_temp = norm_mtree + 5.1 + 17 * 3.5
     est = start_temp + temp_base

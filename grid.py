@@ -38,7 +38,7 @@ def syndromes_to_complex(d: int, bsynd: np.ndarray):
     return cmpx
 
 
-def pos_nonz(d:int):
+def pos_nonz(d: int):
     anc = np.zeros((d + 1, d - 1))
     anc[::2, 1::2] = 1
     anc[1::2, ::2] = 1
@@ -134,10 +134,12 @@ def gridx(d: int, bsynd: np.ndarray, clk: Wire):
     cpx = [l2[k] for k in xa]
     return cpx, propag_clk
 
+
 def sample_synd(d: int):
-    xcnt = (d-1)**2 // 2 + d -1 
+    xcnt = (d - 1) ** 2 // 2 + d - 1
     bsynd = np.random.choice([True, False], xcnt, p=[0.05, 0.95])
     return bsynd
+
 
 def gridaround(d: int, plot=False):
     working_circuit().reset()
@@ -267,21 +269,22 @@ def syndromes(
     return synd_wires
 
 
-def get_gridspecs(d: int, n_runs:int):
-    lates = [la for _, la, _,_,_ in [grid(d=d) for _ in range(n_runs)]]
+def get_gridspecs(d: int, n_runs: int):
+    lates = [la for _, la, _, _, _ in [grid(d=d) for _ in range(n_runs)]]
     jj = get_jj()
-    return {"d":d, "jj":jj, "latency":max(lates)}
+    return {"d": d, "jj": jj, "latency": max(lates)}
 
 
-def late_est(d: int)-> tuple[float, int]:
+def late_est(d: int, nq: int = 1) -> tuple[float, int]:
     n = xcnt(d)
-    gen_clk = 20
-    third_ck = gen_clk + 3*5.1+ 2*6*3.5
+    gen_clk = 20 if nq == 1 else 5.1 * ceil(log2(nq))
+    third_ck = gen_clk + 3 * 5.1 + 2 * 6 * 3.5
     spltree = ceil(log2(n)) * 5.1
     d_and = 5.0
     cachup_jtl = ceil((spltree + d_and) / 3.5)
     dcpx = third_ck + cachup_jtl * 3.5
     return dcpx, cachup_jtl
+
 
 # if __name__ == "__main__":
 #     main()
