@@ -28,7 +28,7 @@ To reduce the area and power requirements, as well as limit
 the latency, we instead use a race logic based design for
 the arbiter. First, the priority scores of each candidate
 qubit are translated into temporal signals. A priority score
-of $x \in \interval{0}{5}$ gets encoded into a pulse
+of $x \in \interval{0}{7}$ gets encoded into a pulse
 arriving at time $T_x = x {\Delta}_t$, where ${\Delta}_t$ is
 a small constant delay. The encoded scores are then passed
 through a temporal bitonic sorter. The function of the
@@ -242,6 +242,49 @@ To produce a monotonically increasing sequence of pulses at the arbiter's data i
 This costs $n$ splitters, mergers and JTL chains.
 This data-driven reset scheme leaves the arbiter design untouched and only has a small overhead to insert pulses at $2n$ existing ports.
 
+\subsection{Priority encoding}
+As explained previously, we determine the priority of a logical qubit for external decoding by partitioning the set $A$ of X ancilla qubits into $m$ disjoint subsets $A_i, i \in \interval{0}{m-1}$ and counting the number of subsets that produce a complex flag.
+Let $C = \sum_{i=0}^{m-1} \max(1, \sum_{x \in A_i}{complex(x)})$, where 
+$complex(x) = \begin{cases} 1 &
+\text{x is the center of a complex clique} \\ 0 & otherwise \end{cases}$.
+The ancillas can be partitioned in many ways.
+In this example, we will partition them in quadrants, for which we have found $C$ to correlate with the length of the largest error chain and how close the logical qubit is to a logical error.
+Other partitioning schemes, like a checkerboard pattern, have also been tested.
+The subset count $C$ is combined with a binary flag $T$ denoting whether the qubit is before a gate that commutes errors ($T=0$) or not ($T=1$) to produce a priority score $P$.
+This priority score will be the input to the arbiter, that will use it to determine which logical qubits are more in need of external decoding and allocate the limited data transfer budget to them.
+The mapping from count $C$ and flag $T$ to score $P$ is determined empirically for a given surface code distance and physical error rate through simulation.
+Table ? shows the priority scheme that will be used for this example.
+
+The complex flags are produced in a straightforward manner as described in \cite{clique}.
+A few small changes we made to their described implementation are that since they mention using SFQMap \cite{sfqmap} for synthesis we assume they have a parallel clocking scheme and use buffer DROs to balance the logic depth of the circuit. 
+However, since the complex flag producing circuit does not need to be pipelined, but can be run all the way through every time it is needed, we can use concurrent clocking, a clock-follows-data scheme.
+This allows for the circuit to be unbalanced, avoiding the overhead of buffer gates and making the routing for clock distribution easier.
+We also use an XNOR cell rather than separate XOR and NOT cells, since the open source RSFQ library from sun magnetics we use \cite{rsfqlib} includes it.
+
+We can cheaply aggregate the complex flags from each ancilla to flags that track whether each quadrant contains a complex clique by connecting all the complex flags from each quadrant with a merger tree.
+The merger is a clockless and stateless element, by aranging them in a binary tree at least one pulse is produced at the output of the tree if any of the inputs of the tree produce a pulse.
+Because more than one pulse can reach the output of the merger tree if multiple inputs fire, we place a DRO at the end of each tree.
+The state of the DRO will be set to 1 by the first pulse that reaches it, and subsequent pulses will have no effect as explained in the reset scheme.
+Reading the DROs of each tree by sending a clock pulse will give as the four complex flags $C_i, i \in \interval{0}{3}$ for each of the quadrants.
+
+Having the complex flag for each quadrant, and a dual rail representation of the $T$ flag, we need to encode the corresponding priority score into a temporal signal to be used in the arbiter.
+To do this, we first sort the binary flags $C_i$ in a monotonically decreasing order, such that all the 1s are in the start, which will give us flags $S_i, i \in \interval{0}{3}$ for which $S_i = C > i$.
+We use a bitonic sorter similar to the one described for the arbiter for the quadrant flags.
+Since the return part of the comparators is not needed here, only 12 FA or LA elements and 12 splitters are needed.
+Because the LA and FA cells in this case are only active for a very short time period with a large gap of inactivity afterwards, a small leakage can be used to reset them before the next evaluation.
+We could not use leakage to reset the arbiter cells the same way, since they need to hold their state for much longer periods of time.
+
+We then use these sorted $S_i$ signals to control a temporal encoder.
+The basic block of a temporal encoder starts with a DROC with the control flag connected to it's data port.
+The positive output of the DROC leads to a JTL chain that adds a given delay determined by the number of JTLs, whereas the negative output does not add such a delay.
+Both the output of the JTL chain and the negative output of the DROC are connected to a merger.
+This way, when a pulse arrives at the input of the block, which is connected to the clock port of the DROC, the merger fires at the output of the block with delay $t_c$ equal to the delay of the DROC and merger if the control signal was not sent and with delay $t_c + t_{chain}$ if the control signal previously arrived at the block.
+We build two chains of these basic delay blocks, one for to encode the scores when the $T$ flag is active and one for when it is not.
+We set the JTL delay of block $B_{i,t}, i \in \interval{0}{3}, t \in \interval{0}{1}$ such that the sum of the JTL delay for it and the blocks before it sum up to the temporal encoding for $C = i$ and $T = t$.
+The two chains produce two temporal encodings, one corresponding to $T$ being active and one for $T$ inactive.
+The outputs of the chains connect to the clock port of a DRO each, the first DRO having it's data port connected to the positive wire of the dual rail $T$ flag and the other to it's negative wire.
+Thus the temporal encoding is multiplexed by the $T$ flag to enter the arbiter.
+Latency and area values for the encoder are shown in Table ?.
 
 
 \end{document}
