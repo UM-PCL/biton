@@ -7,284 +7,71 @@
 \newcommand{\inhib}{\relbar\mapsfromchar}
 
 \begin{document}
-\subsection{Temporal arbiter implementation}
+\subsection{Arbiter implementation}
 
-Given priority scores from all the candidate qubits, an
-arbiter circuit is needed to select the ones with the
-highest priority, in order for their syndromes to be routed
-to the allocated communication infrastructure for decoding.
+In order to use the priority scores determined by our scheme to allocate the data transfer budget to the highest scoring logical qubits, we need a way to identify the $k$ logical qubits with the highest priority scores out of the $n$ that are competing to be decoded.
+An arbiter circuit that implements the top-$k$ argmax of the $n$ priority scores based on arithmetic comparison of binary priority scores and multiplexing of qubit indexes would incur a significant area cost for the budget current integration density of superconducting cells allows, especially as the number of logical qubits $n$ and number of supported priority levels increases.
+Fortunately, designs like this one that consist of comparisons can be implemented efficiently using temporal computing, a logic scheme where information is represented as the time of arrival of signals, allowing priority scores of any number of bits to be supported by a single wire. 
+Specifically, we design our arbiter using the paradigm of race logic \cite{racelogic}, for which a mapping of it's primitives to superconducting cells was provided in \cite{sfq_race}.
 
-The desired functionality is in essence a top-$k$ argmax,
-which will give the indexes of the $k$ logical qubits that
-produce the highest scores and thus are in most urgent need
-of complex correction. This would be relatively
-straightforward to implement the traditional way with
-arithmetic comparators and index multiplexers. However, this
-implementation carries a significant area cost for the
-limited budget allowed by the integration density of current
-superconducting fabrication processes.
+For the comparator module we base the arbiter on, we make use of three race logic primitives.
+The first two primitives are First Arrival (FA) and Last Arrival (LA), which perform the equivalent of $\min$ and $\max$ operations of the temporally encoded values.
+FA will fire upon the first pulse it receives in one of it's input ports and reset upon receiving a second pulse on it's other input port, whereas LA both fires and resets upon receiving the second pulse.
+In SFQ they are implemented with an inverted Muller C cell and a regular C cell respectively.
+We have tuned these cells to have very similar delays, so differences in their propagation speed do not lead to the need for synchronizing signals inside the arbiter.
+The third primitive is Inhibit (INH), that has two input ports $a$ and $b$ and propagates a pulse received on $b$ only if it arrives before a pulse on $a$ does.
+Typically Inhibit is implemented using a clocked inverter cell, however because we need only a boolean signal of whether $b$ arrived before $a$ and not a temporal signal of when $b$ arrived for our purposes, we substitute it for the cheaper DRO cell, and assign $a$ to the DRO's clock port and $b$ to it's data input port.
+In the case $a$ and $b$ arrive very close to each other, they will both represent the same priority score and their comparison will be a tie, in which case either the DRO firing or not are both valid for our purposes.
+With these primitives we can design the comparator module of size 2 that will be the building block of our arbiter.
 
-To reduce the area and power requirements, as well as limit
-the latency, we instead use a race logic based design for
-the arbiter. First, the priority scores of each candidate
-qubit are translated into temporal signals. A priority score
-of $x \in \interval{0}{7}$ gets encoded into a pulse
-arriving at time $T_x = x {\Delta}_t$, where ${\Delta}_t$ is
-a small constant delay. The encoded scores are then passed
-through a temporal bitonic sorter. The function of the
-temporal sorter is to route the input signals such that they
-appear in it's outputs in order from earlier to later
-arriving pulse. So if $x_k$ is the $k$-th largest priority
-score and $T_{sort}$ the constant latency of the sorter, the
-$k$-th output wire of the sorter will produce a pulse at
-time $x_k {\Delta}_t + T_{sort}$. Sorters are very well
-suited for temporal implementation, as only two functional
-cells are needed to sort two signals, leading to hardware
-efficiency impossible by other means. Of course, because we
-need the top-$k$ argmax of the signals, not just their max,
-a sorter by itself is insufficient. Instead, the signals
-passing through the bitonic sorter are also used to control
-a small routing circuitry, which will lead select signals
-$return_i, i \in \interval{0}{k-1}$ for each of the top $k$
-maximum outputs of the sorter through the same path the
-corresponding data signals took to reach that output. This
-ends in a pulse being emitted at port $sel_i, i \in
-\interval{0}{n-1}$, for exactly those qubits whose priority
-score $x_i$ is in the top-$k$ largest priority scores. This
-approach avoids complicated index multiplexing and decoding
-circuitry and produces directly usable binary flags of qubit
-selection.
+The comparator module's ports consist of four pairs, each pair consisting of a data port and a select port.
+It provides the functionality for both a forward pass that uses the data ports to sort the input priority scores and a backward pass that uses the select ports to route signals to go down the same path data signals did in the forward pass.
+The forward pass connects the $x_0$ and $x_1$ input wires which encode priority scores to FA, LA and INH cells.
+The outputs of FA and LA connect to the $x_{min}$ and $x_{min}$ output ports of the comparator, propagating the earliest and latest pulses from the inputs respectively.
+The output of the INH cell goes to the data input of two DROC cells, to prepare them for the backward pass.
+In the backward pass input ports $sel_{min}$ and $sel_{max}$ are connected to the clock ports of the DROC cells.
+The outputs of the DROC pair are merged such that a pulse from $sel_{min}$ is routed to $sel_0$ if the DROC pair stores a pulse from the INH, meaning that signal $x_0$ arrived before $x_1$, and to $sel_1$ otherwise.
+Similarly, a signal from $sel_{max}$ goes to $sel_1$ if $x_0$ arrived before $x_1$ and to $sel_0$ otherwise.
 
-The basic element of the temporal arbiter is the comparator
-module, shown in fig$?$. Let $T(x)$ denote the time a pulse
-arrives at port or wire $x$. No more than one pulse will
-reach any port during an execution of our temporal circuit,
-so we only need to represent the time for that pulse. In
-cases where no pulse reaches $x$ during an execution, we
-assign $T(x) = +\infty$.
+Fig\ref{fig:comp} shows an example of the comparator module's operation with the routes the 
+various signals took.
+Fig~\ref{fig:comcirc} shows the gate level implementation of the comparator module.
+As it can be seen, only a handful of gates are needed compared to what a bit parallel arithmetic implementation would require.
 
-The comparator module sorts two input temporal signals at
-ports $x_a$ and $x_b$ , such that the output $x_{max}$ will
-re-emit the larger of the two encoded priorities, meaning
-the one for which a pulse arrived the latest, such that
-$T(x_{max}) = \max{T(x_a), T(x_b)} + \tau_c$, where $\tau_c$
-a constant denoting the comparator's latency. The output
-$x_{min}$ emits the smaller of $x_a, x_b$. In cases of ties
-the outputs are equivalent.
+To build the full arbiter that provides the functionality of top-$k$ argmax, we arrange comparator modules in the configuration of a bitonic sorter.
+Fig~\ref{fig:sort4} shows the arrangement for a 4 element bitonic sorter.
+Also shown is the path of the latest arriving encoded priority score through the sorter and the path a select signal given at the highest position of the sorter's final layer takes through the comparator modules to fire at the select port of the first layer, denoting the argmax of the data input pulses.
 
-For the backward pass, the comparator module routes the
-select signal $return_{max}$ to the port $sel_{a}$ if $x_a$
-arrived after $x_b$ and to port $sel_{b}$ if it arrived
-before it or at the same time. A pulse appearing at
-$return_{min}$ will be routed the opposite way. The encoding
-for the backward pass is simply binary rather than temporal,
-so we don't care about the arrival times of $return$ signals
-as long as they occur after the inputs $x_a, x_b$. 
-
-This gives us $sel_a = \begin{cases} return_{max} &
-T(x_a)>T(x_b) \\ return_{min} & otherwise \end{cases}$.
-$sel_b$ works similarly. The $sel$ outputs encode the argmax
-of the two input priority scores. 
-
-To build the complete top-$k$ argmax, comparator modules are
-arranged into a bitonic sorter, with $x_{max}$ and $x_{min}$
-ports connected to $x_a$ or $x_b$ ports of the next layer's
-comparators and $sel$ ports connected to $return$ ports of
-preceding layer. First we pass pulses encoding the priority
-scores of $n$ logical qubits to the $n$ data input ports of
-the sorter circuit. After they have propagated through the
-sorter, the $return$ ports corresponding to the top $k$
-outputs of the bitonic sorter are activated with a pulse.
-These pulses will follow the path their perspective data
-signal took through the comparators, thus only $k$ ports at
-the first layer of the sorter will receive pulses at their
-related $sel$ ports. The bitvector of these $sel$ signals
-can then be used directly to route the syndromes of the
-selected logical qubits for external decoding.
-
-However, we can see that a large portion of the sorter is
-sorting signals that can not belong to the top $k$, which is
-unnecessary. To improve on hardware efficiency, we can
-sparsify the bitonic sorter. First, we split the $n$ inputs
-in groups of size $k$ and pass each group through a full
-bitonic sorter of size $k$.
-We can then reduce the number of inputs by half by
-selecting the $k$ largest outputs from each pair of
-$k$-sized sorters. This is done the same way that selecting
-the top half of values is done in bitonic sorting, by
-applying a comparator to the $i$-th output of the first
-sorter and the $(k-i)$-th one of the second sorter. We then
-pass the $\frac{n}{2}$ signals through a similar sort and
-reduce process. We repeat this until only $k$ signals are
-left, from which the $return$ signals will originate. This
-reduces the number of comparators from $\frac{n \log_2(n)
-(\log_2(n)+1)}{4}$ to $(\frac{k \log_2(k) (\log_2(k)+1)}{4}
-+\frac{k}{2}) \frac{n}{k}+(\frac{n}{k}-2)\frac{k \log_2(k) +
-k}{2}$, and the number of comparators a signal goes through
-from $\frac{\log_2(n) (\log_2(n)+1)}{2}$ to $\frac{\log_2(k)
-(\log_2(k)-1)}{2} + \log_2(\frac{n}{k})(\log_2(k) + 1)$,
-which minimizes latency.
-
-Since we only keep the $x_{max}$ output from the comparators
-that implement the $2k$ to $k$ reduction between sort steps,
-and only need to route the $return_{max}$ signal to a $sel$
-port, we can use a smaller version of the comparator module
-for these cases.
-
-\subsection{Comparator circuit}
-
-The first two race logic primitives we need for the arbiter
-are \textit{First Arrival} (FA) and \textit{Last Arrival}
-(LA), which correspond to $\min$ and $\max$ operations on
-temporal signals respectively. These can be implemented with
-a C element for LA and an inverted C element for FA. Both of
-theses cells are cheap area-wise and we have tuned them to
-have very similar delays, so differences in their
-propagation delay do not cause the order of signals' arrival
-to change for the length of the sorter network. Thanks to
-this, synchronization to re-align the signals to their
-encoded value is not needed for the input sizes we consider.
-
-For the backrouting part of the comparator module, we need
-\begin{enumerate*}[label=\emph{\alph*})] \item to detect
-    whether $a$ or $b$ arrived first and \item to
-      demultiplex the $return$ signals based on that.
-\end{enumerate*} The first case corresponds to an inhibit
-cell in temporal logic. $Inhibit(a,b)$ or $a \inhib b$
-allows signal $b$ to pass to the output only if $a$ has not
-previously arrived, in which case it gets blocked. Typically
-in superconducting circuits clocked inverters are used as
-inhibit cells. Since in our case we only need to know
-whether input $b$ came first or second, and not the temporal
-information of when it arrived, we can use the cheaper
-Destructive Readout(DRO) cell. Input $a$ is mapped to the
-clock port of the DRO and $b$ to the data input port. If $a$
-arrives before $b$, no pulse is stored in the DRO and thus
-no pulse is produced at the output. If instead the pulse at
-$b$ arrives first at the data port of the DRO, it stores a
-pulse in the superconducting loop that propagates to the DRO
-output upon $a$'s arrival. In the case the two signals $a$
-and $b$ are close to each other, such that they encode the
-same discrete temporal value, their comparison is a tie and
-either the presence or absence of a pulse at the DRO output
-is a valid result. This is important for the correct
-operation of the system.
-
-To demultiplex $return_{max}$, a Complementary output
-Destructive Readout (DROC) cell is used. Upon clock arrival,
-this cell produces a pulse at either it's first output if it
-has not received a pulse in the data input port, or at it's
-second output otherwise. Connecting the output of the $a
-\inhib b$ DRO in the data port of the DROC and the
-$return_{max}$ wire to it's clock port, as well as
-connecting the first and second DROC outputs to the
-comparator module's $sel_b$ and $sel_a$, a pulse at
-$return_{max}$ gets routed to $sel_a$ if $a$ was the last
-signal of the two and to $sel_b$ in the other case. Because
-we might need to select both of the comparator's operands
-for the top-$k$, we also need a second DROC with it's
-outputs swapped to route $return_{min}$ to the select signal
-of the input that came first. We use a splitter to pass $a
-\inhib b$ to the data input of both DROCs and two merger
-cells to combine their outputs for $sel_a$ and $sel_b$. Four
-more splitters are used to send inputs $a$ and $b$ to the
-FA, LA and DRO cells. The comparator module only requires a
-handful of gates, significantly less than a bit-parallel
-implementation would, which allows it's usage in our
-resource constrained environment. As a bonus, this implementation
-is fully asynchronous and does not require an expensive clocking network,
-which is a problem for many superconducting designs.
-
-% The arbiter circuit has been implemented in the PyLse
-% pulse-transfer simulator for various sizes. Measurements for
-% area and latency are shown in table x and fig y.
-
-\begin{table}[]
-\begin{tabular}{|l|l|l|l|}
-\hline
-n   & k & latency (ps) & area (JJ) \\ \hline
-64  & 2 & 379          & 5580      \\ \hline
-128 & 4 & 588          & 23004     \\ \hline
-256 & 8 & 847          & 77760     \\ \hline
-\end{tabular}
-\end{table}
-
-\includegraphics*[width=0.5\textwidth]{figures/comparator.drawio.pdf}
-\includegraphics*[width=0.5\textwidth]{figures/sort4.drawio.pdf}
-\includegraphics*[width=0.5\textwidth]{figures/arbiterk4n16.drawio.pdf}
-\includegraphics*[width=0.5\textwidth]{figures/circuit_comparator.drawio.pdf}
-
-\subsection{Resetting procedure}
-The superconducting cells that comprise the arbiter are stateful, except for the splitter and merger.
-All cells that have a state other than their initial one after the arbiter's execution must be returned to their original state before a new execution can occur, in order to guarantee correct operation.
-Since all data inputs of the arbiter receive exactly one pulse, even those that denote priority score 0, and a comparator module that receives both data inputs fires at both it's $x_{max}$ and $x_{min}$ outputs, every FA and LA cell in the arbiter will receive pulses at both it's input ports, thus it will return to it's initial state.
-However, the DRO cells that serve as inhibits will still store a value of 1 at the end of execution if their data port receives it's pulse after the clock port does. 
-Additionally, the DROC cells that route the $return$ signals will not receive a clock pulse if they don't happen to be in the path of one of the top $k$ largest inputs, which means the result of the inhibit operation will stay stored in them.
-The most straightforward way to solve this would be supplying an external reset signal to each of these cells.
-Unfortunately, this would require using significantly more expensive cells that offer such a reset port, as well as necessitating a distribution network for the reset signal to all of these cells, which would cost a lot of splitters that are necessary for the fanout.
-To avoid this, we designed a data-driven reset scheme, that returns all cells to their original state by only inserting signals to already existing ports in the design, without making any changes to it's internals.
-To start, we note that if a DRO or DROC cell receives a pulse at it's data port while allready storing one, the new input pulse does not affect it's state or produce output pulses. 
-We make use of this property to clear the state of all inhibit DROs.
-The forward pass of the comparator module can be thought of as swapping the input signals if they are not in order, and propagating them unswapped if they are already ordered.
-Additionally if the two inputs are in order, the inhibit DRO will receive the data pulse before the clock pulse, and thus when the second input arrives it will fire and clear it's stored state.
-The comparators in the bitonic sorter are arranged such that a layer of comparators receiving a monotonically increasing sequence of pulses, $T_i = i * {\Delta}_t$ for $T_i$ the time of arrival for the $i$-th input's pulse, will have all it's inhibit DROs fire and clear, as well as propagate the pulse sequence at the same order, meaning the next layer of comparators will also receive an ordered sequence and have the same effect.
-This also holds true for the reduced "max" layers that only implement the max operation instead of both max and min like most comparator layers.
-By induction, this means that inserting such a sequence of inputs where data input $i+1$ of the sorter receives a pulse ${\Delta}_t$ after the input $i$ did, will cause every inhibit DRO in the design to fire and clear.
-While inserting this sequence of pulses for the reset sequence after an operation of the circuit takes more time than the operation itself, we have a large time gap of hundreds of nS between executions of the arbiter during which the external syndrome decoding happens, whereas the reset operation only takes up to a couple nS, that do not contribute to the decoding latency.
-Since every DRO fired, we know that now every DROC in the sorter holds a pulse.
-As such, we know the path a $return$ signal inserted at any point in the circuit will take.
-At every "max" module in the design that combines the outputs of two sorters of size $k$ to the $k$ largest values, every $return$ signal received from the following layer will now be routed to the same of the two sorters, as all of the larger signals came from it.
-Thus using mergers we insert pulses to the $return$ signals at the input of every "max" layer that connect to the sorters from the previous layer that we know won't receive the $return$ signals routed through the $max$ layer.
-We also insert such pulses at the $return$ ports for the top $k$ selection at the final layer of the arbiter.
-These $n$ inserted signals will traverse through every DROC in the arbiter on their way to the first layer, clearing the state all of them hold.
-Only $n$ mergers and $n-1$ splitters are needed to insert this reset $return$ signal.
-To produce a monotonically increasing sequence of pulses at the arbiter's data inputs for the DRO reset, we use a splitter chain of length $n$, where a pulse entering the $i$-th chain will be split into two pulses, one being merged into the $i$-th input of the arbiter and one passing through a small number of JTL to add a bit of delay before entering the $i+1$ part of the splitter chain.
-This costs $n$ splitters, mergers and JTL chains.
-This data-driven reset scheme leaves the arbiter design untouched and only has a small overhead to insert pulses at $2n$ existing ports.
-
-\subsection{Priority encoding}
-As explained previously, we determine the priority of a logical qubit for external decoding by partitioning the set $A$ of X ancilla qubits into $m$ disjoint subsets $A_i, i \in \interval{0}{m-1}$ and counting the number of subsets that produce a complex flag.
-Let $C = \sum_{i=0}^{m-1} \max(1, \sum_{x \in A_i}{complex(x)})$, where 
-$complex(x) = \begin{cases} 1 &
-\text{x is the center of a complex clique} \\ 0 & otherwise \end{cases}$.
-The ancillas can be partitioned in many ways.
-In this example, we will partition them in quadrants, for which we have found $C$ to correlate with the length of the largest error chain and how close the logical qubit is to a logical error.
-Other partitioning schemes, like a checkerboard pattern, have also been tested.
-The subset count $C$ is combined with a binary flag $T$ denoting whether the qubit is before a gate that commutes errors ($T=0$) or not ($T=1$) to produce a priority score $P$.
-This priority score will be the input to the arbiter, that will use it to determine which logical qubits are more in need of external decoding and allocate the limited data transfer budget to them.
-The mapping from count $C$ and flag $T$ to score $P$ is determined empirically for a given surface code distance and physical error rate through simulation.
-Table ? shows the priority scheme that will be used for this example.
-
-The complex flags are produced in a straightforward manner as described in \cite{clique}.
-A few small changes we made to their described implementation are that since they mention using SFQMap \cite{sfqmap} for synthesis we assume they have a parallel clocking scheme and use buffer DROs to balance the logic depth of the circuit. 
-However, since the complex flag producing circuit does not need to be pipelined, but can be run all the way through every time it is needed, we can use concurrent clocking, a clock-follows-data scheme.
-This allows for the circuit to be unbalanced, avoiding the overhead of buffer gates and making the routing for clock distribution easier.
-We also use an XNOR cell rather than separate XOR and NOT cells, since the open source RSFQ library from sun magnetics we use \cite{rsfqlib} includes it.
-
-We can cheaply aggregate the complex flags from each ancilla to flags that track whether each quadrant contains a complex clique by connecting all the complex flags from each quadrant with a merger tree.
-The merger is a clockless and stateless element, by aranging them in a binary tree at least one pulse is produced at the output of the tree if any of the inputs of the tree produce a pulse.
-Because more than one pulse can reach the output of the merger tree if multiple inputs fire, we place a DRO at the end of each tree.
-The state of the DRO will be set to 1 by the first pulse that reaches it, and subsequent pulses will have no effect as explained in the reset scheme.
-Reading the DROs of each tree by sending a clock pulse will give as the four complex flags $C_i, i \in \interval{0}{3}$ for each of the quadrants.
-
-Having the complex flag for each quadrant, and a dual rail representation of the $T$ flag, we need to encode the corresponding priority score into a temporal signal to be used in the arbiter.
-To do this, we first sort the binary flags $C_i$ in a monotonically decreasing order, such that all the 1s are in the start, which will give us flags $S_i, i \in \interval{0}{3}$ for which $S_i = C > i$.
-We use a bitonic sorter similar to the one described for the arbiter for the quadrant flags.
-Since the return part of the comparators is not needed here, only 12 FA or LA elements and 12 splitters are needed.
-Because the LA and FA cells in this case are only active for a very short time period with a large gap of inactivity afterwards, a small leakage can be used to reset them before the next evaluation.
-We could not use leakage to reset the arbiter cells the same way, since they need to hold their state for much longer periods of time.
-
-We then use these sorted $S_i$ signals to control a temporal encoder.
-The basic block of a temporal encoder starts with a DROC with the control flag connected to it's data port.
-The positive output of the DROC leads to a JTL chain that adds a given delay determined by the number of JTLs, whereas the negative output does not add such a delay.
-Both the output of the JTL chain and the negative output of the DROC are connected to a merger.
-This way, when a pulse arrives at the input of the block, which is connected to the clock port of the DROC, the merger fires at the output of the block with delay $t_c$ equal to the delay of the DROC and merger if the control signal was not sent and with delay $t_c + t_{chain}$ if the control signal previously arrived at the block.
-We build two chains of these basic delay blocks, one for to encode the scores when the $T$ flag is active and one for when it is not.
-We set the JTL delay of block $B_{i,t}, i \in \interval{0}{3}, t \in \interval{0}{1}$ such that the sum of the JTL delay for it and the blocks before it sum up to the temporal encoding for $C = i$ and $T = t$.
-The two chains produce two temporal encodings, one corresponding to $T$ being active and one for $T$ inactive.
-The outputs of the chains connect to the clock port of a DRO each, the first DRO having it's data port connected to the positive wire of the dual rail $T$ flag and the other to it's negative wire.
-Thus the temporal encoding is multiplexed by the $T$ flag to enter the arbiter.
-Latency and area values for the encoder are shown in Table ?.
-
+Scaling the bitonic sorter configuration to the number $n$ of priority scores we need to evaluate would work for a top-$k$ argmax if we first send the temporally encoded priority scores for all $n$ qubits as input pulses for the forward pass and after that fire pulses at the select ports of the final layer corresponding to the $k$ largest positions.
+These would get routed to the select ports of the first layer corresponding to the $k$ largest scores entered in the data ports, providing a binary flag representation of the argmax that can be used without additional decoding.
+However, a large part of this structure would be wasted on comparators sorting signals that cannot be in the top-$k$, and thus are not needed.
+After removing the unnecessary comparators we are left with a structure where the data signals are split in groups of length $k$ and each group goes through a full bitonic sorter of size $k$.
+The number of data signals is then cut in half by selecting the $k$ largest outputs from each pair of $k$-sized sorters.
+For every comparator that performs this reduction only the $max$ pair of data/select ports is connected to the next layer, whereas the $x_{min}$ and $sel_{min}$ are left unconnected.
+The $\frac{n}{2}$ signals left go through a similar sort and reduce process, although subsequent blocks of size $k$ sorters require less comparators. 
+After the final reduction $k$ signals will be left, from which the select signals for the top-$k$ will originate.
 
 \end{document}
+
+% @article{madhavan2014race,
+%   title={Race logic: A hardware acceleration for dynamic programming algorithms},
+%   author={Madhavan, Advait and Sherwood, Timothy and Strukov, Dmitri},
+%   journal={ACM SIGARCH Computer Architecture News},
+%   volume={42},
+%   number={3},
+%   pages={517--528},
+%   year={2014},
+%   publisher={ACM New York, NY, USA}
+% }
+
+% @ARTICLE{9380389,
+%   author={Tzimpragos, Georgios and Volk, Jennifer and Vasudevan, Dilip and Tsiskaridze, Nestan and Michelogiannakis, George and Madhavan, Advait and Shalf, John and Sherwood, Timothy},
+%   journal={IEEE Micro}, 
+%   title={Temporal Computing With Superconductors}, 
+%   year={2021},
+%   volume={41},
+%   number={3},
+%   pages={71-79},
+%   keywords={Superconducting logic circuits;Logic gates;Delays;Superconductivity;Semantics;Hardware;Josephson junctions},
+%   doi={10.1109/MM.2021.3066377}}
+
