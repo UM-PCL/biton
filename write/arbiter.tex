@@ -191,7 +191,9 @@ more splitters are used to send inputs $a$ and $b$ to the
 FA, LA and DRO cells. The comparator module only requires a
 handful of gates, significantly less than a bit-parallel
 implementation would, which allows it's usage in our
-resource constrained environment.
+resource constrained environment. As a bonus, this implementation
+is fully asynchronous and does not require an expensive clocking network,
+which is a problem for many superconducting designs.
 
 % The arbiter circuit has been implemented in the PyLse
 % pulse-transfer simulator for various sizes. Measurements for
@@ -211,5 +213,35 @@ n   & k & latency (ps) & area (JJ) \\ \hline
 \includegraphics*[width=0.5\textwidth]{diagrams/sort4.drawio.pdf}
 \includegraphics*[width=0.5\textwidth]{diagrams/arbiterk4n16.drawio.pdf}
 \includegraphics*[width=0.5\textwidth]{diagrams/circuit_comparator.drawio.pdf}
+
+\subsection{Resetting procedure}
+The superconducting cells that comprise the arbiter are stateful, except for the splitter and merger.
+All cells that have a state other than their initial one after the arbiter's execution must be returned to their original state before a new execution can occur, in order to guarantee correct operation.
+Since all data inputs of the arbiter receive exactly one pulse, even those that denote priority score 0, and a comparator module that receives both data inputs fires at both it's $x_{max}$ and $x_{min}$ outputs, every FA and LA cell in the arbiter will receive pulses at both it's input ports, thus it will return to it's initial state.
+However, the DRO cells that serve as inhibits will still store a value of 1 at the end of execution if their data port receives it's pulse after the clock port does. 
+Additionally, the DROC cells that route the $return$ signals will not receive a clock pulse if they don't happen to be in the path of one of the top $k$ largest inputs, which means the result of the inhibit operation will stay stored in them.
+The most straightforward way to solve this would be supplying an external reset signal to each of these cells.
+Unfortunately, this would require using significantly more expensive cells that offer such a reset port, as well as necessitating a distribution network for the reset signal to all of these cells, which would cost a lot of splitters that are necessary for the fanout.
+To avoid this, we designed a data-driven reset scheme, that returns all cells to their original state by only inserting signals to already existing ports in the design, without making any changes to it's internals.
+To start, we note that if a DRO or DROC cell receives a pulse at it's data port while allready storing one, the new input pulse does not affect it's state or produce output pulses. 
+We make use of this property to clear the state of all inhibit DROs.
+The forward pass of the comparator module can be thought of as swapping the input signals if they are not in order, and propagating them unswapped if they are already ordered.
+Additionally if the two inputs are in order, the inhibit DRO will receive the data pulse before the clock pulse, and thus when the second input arrives it will fire and clear it's stored state.
+The comparators in the bitonic sorter are arranged such that a layer of comparators receiving a monotonically increasing sequence of pulses, $T_i = i * {\Delta}_t$ for $T_i$ the time of arrival for the $i$-th input's pulse, will have all it's inhibit DROs fire and clear, as well as propagate the pulse sequence at the same order, meaning the next layer of comparators will also receive an ordered sequence and have the same effect.
+This also holds true for the reduced "max" layers that only implement the max operation instead of both max and min like most comparator layers.
+By induction, this means that inserting such a sequence of inputs where data input $i+1$ of the sorter receives a pulse ${\Delta}_t$ after the input $i$ did, will cause every inhibit DRO in the design to fire and clear.
+While inserting this sequence of pulses for the reset sequence after an operation of the circuit takes more time than the operation itself, we have a large time gap of hundreds of nS between executions of the arbiter during which the external syndrome decoding happens, whereas the reset operation only takes up to a couple nS, that do not contribute to the decoding latency.
+Since every DRO fired, we know that now every DROC in the sorter holds a pulse.
+As such, we know the path a $return$ signal inserted at any point in the circuit will take.
+At every "max" module in the design that combines the outputs of two sorters of size $k$ to the $k$ largest values, every $return$ signal received from the following layer will now be routed to the same of the two sorters, as all of the larger signals came from it.
+Thus using mergers we insert pulses to the $return$ signals at the input of every "max" layer that connect to the sorters from the previous layer that we know won't receive the $return$ signals routed through the $max$ layer.
+We also insert such pulses at the $return$ ports for the top $k$ selection at the final layer of the arbiter.
+These $n$ inserted signals will traverse through every DROC in the arbiter on their way to the first layer, clearing the state all of them hold.
+Only $n$ mergers and $n-1$ splitters are needed to insert this reset $return$ signal.
+To produce a monotonically increasing sequence of pulses at the arbiter's data inputs for the DRO reset, we use a splitter chain of length $n$, where a pulse entering the $i$-th chain will be split into two pulses, one being merged into the $i$-th input of the arbiter and one passing through a small number of JTL to add a bit of delay before entering the $i+1$ part of the splitter chain.
+This costs $n$ splitters, mergers and JTL chains.
+This data-driven reset scheme leaves the arbiter design untouched and only has a small overhead to insert pulses at $2n$ existing ports.
+
+
 
 \end{document}
