@@ -1,4 +1,4 @@
-n,k,temporal_distance,forward_delay,latest_input,return_start,backwards_delay,total_delay,JJs,temp_jj,reset_jj,total_jj
-64,2,10.0,161.0,60.0,221.0,158.0,379.0,5580,6900,1391,13871
-128,4,10.0,275.0,60.0,335.0,252.8,587.8,23004,13812,2789,39605
-256,8,12.6,408.0,75.6,483.6,363.4,847.0,77760,27636,5585,110981
+n,k,temporal_distance,forward_delay,latest_input,return_start,backwards_delay,total_delay,JJs,reset_jj,total_jj
+64,2,10.0,161.0,60.0,221.0,158.0,379.0,5580,1391,6971
+128,4,10.0,275.0,60.0,335.0,252.8,587.8,23004,2789,25793
+256,8,12.6,408.0,75.6,483.6,363.4,847.0,77760,5585,83345
