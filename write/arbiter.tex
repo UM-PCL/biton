@@ -50,6 +50,27 @@ The number of data signals is then cut in half by selecting the $k$ largest outp
 For every comparator that performs this reduction only the $max$ pair of data/select ports is connected to the next layer, whereas the $x_{min}$ and $sel_{min}$ are left unconnected.
 The $\frac{n}{2}$ signals left go through a similar sort and reduce process, although subsequent blocks of size $k$ sorters require less comparators. 
 After the final reduction $k$ signals will be left, from which the select signals for the top-$k$ will originate.
+Fig~\ref{fig:arb16} shows such a sparse arbiter that selects the top 4 out of 16 signals.
+
+% Reset part
+After an execution of the arbiter, some of the DRO and DROC cells could be still storing a pulse, which needs to be cleared before the next execution can occur.
+The FA and LA cells have all received a pulse in both of their input ports during execution, thus they are already reset.
+As the arbiter only operates once per decode cycle, hundreds of nanoseconds pass between executions, providing ample time to reset the DRO and DROC cells.
+Although an external reset signal could be used, it would require more complicated and expensive cells that have an additional reset port and incur splitting overhead to connect the reset signal to every cell.
+To avoid this, we design a data-driven reset scheme.
+This enables us to return all cells to their original state by only inserting signals to already existing ports in the design, with no changes to it's internals.
+The first step of the reset scheme resets all the inhibit DRO cells via a forward pass of the arbiter.
+When a comparator module gets a pulse at $x_0$ first and at $x_1$ after, it's inhibit DRO will fire after receiving a pulse at the data port and thus clear.
+Additionally in this case the comparator will propagate the data inputs with the same order it received them.
+
+We make use of these properties by inserting a linearly increasing sequence of pulses in the data input ports of the arbiter, meaning that input $i+1$ will receive a pulse a fixed time after input $i$.
+Due to the arrangement of comparators in a bitonic sorter, the order of pulses will remain the same through every comparator layer, as it is already sorted, and also every comparator will receive a pulse at input $x_0$ before $x_1$, clearing it's DRO.
+Since every inhibit DRO in the design fired, all DROC cells in the arbiter's comparators will store a pulse, setting the stage for the second step of the reset scheme.
+In this step, we insert a pulse at the select signals for the top $k$ scores in the final layer, as well as the unused $sel_{min}$ ports of the comparators in every reduction layer.
+Together these $n$ select signals will pass through every select port in their path towards the first layer, causing every DROC to fire and clear in the process.
+The linearly increasing sequence of pulses for the first step can be easily produced using a splitter chain, where a pulse entering the $i$-th chain link will be split into two pulses, one being merged into the $i$-th input of the arbiter and going through a few JTL to add a bit of delay before entering the $i+1$ part of the splitter chain.
+To support the second step only a splitter tree of size $n$ for the reset signal is needed.
+
 
 \end{document}
 
