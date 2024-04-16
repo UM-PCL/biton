@@ -52,7 +52,8 @@ The $\frac{n}{2}$ signals left go through a similar sort and reduce process, alt
 After the final reduction $k$ signals will be left, from which the select signals for the top-$k$ will originate.
 Fig~\ref{fig:arb16} shows such a sparse arbiter that selects the top 4 out of 16 signals.
 
-% Reset part
+\subsection{Reset scheme}
+
 After an execution of the arbiter, some of the DRO and DROC cells could be still storing a pulse, which needs to be cleared before the next execution can occur.
 The FA and LA cells have all received a pulse in both of their input ports during execution, thus they are already reset.
 As the arbiter only operates once per decode cycle, hundreds of nanoseconds pass between executions, providing ample time to reset the DRO and DROC cells.
@@ -70,6 +71,35 @@ In this step, we insert a pulse at the select signals for the top $k$ scores in 
 Together these $n$ select signals will pass through every select port in their path towards the first layer, causing every DROC to fire and clear in the process.
 The linearly increasing sequence of pulses for the first step can be easily produced using a splitter chain, where a pulse entering the $i$-th chain link will be split into two pulses, one being merged into the $i$-th input of the arbiter and going through a few JTL to add a bit of delay before entering the $i+1$ part of the splitter chain.
 To support the second step only a splitter tree of size $n$ for the reset signal is needed.
+
+\subsection{Priority score evaluation}
+
+To evaluate the priority score of a logical qubit from it's syndromes, the first step is producing the complex flags for each ancilla qubit.
+We use the same basic gate configuration as \cite{btwc} for this end, and since the circuit is not pipelined but instead gets run once all the way through every decode cycle, we route in a clock-follows-data fashion (concurrent clocking), which lets us avoid inserting buffer gates to deal with logic depth imbalance.
+The complex flags from each ancilla qubit of the same type are agregated into a single flag for each quadrant that tracks whether any qubit belonging to the quadrant is the center of the complex clique.
+This agregation is done very efficiently by connecting the complex flag wires of each quadrant's ancillas as inputs to a merger tree of the same size.
+Fig~\ref{fig:mtree} shows the connections of complex flags to the merger trees for an example surface code.
+Since merger cells are both clock-less and stateless, this is the cleanest way to combine a set of signals.
+Because more than one pulse might reach the output of the merger tree if multiple input complex flags fire, a DRO is placed at the output of each tree.
+This way any number of pulses at the output simply set the state of the DRO to one, making it fire a single pulse when the clock triggers it.
+
+This produces complex flags $C_i, i \in \interval{0}{3}$ for each of the four quadrants, which in combination with the flag $T$ for whether the qubit is before a T gate will be encoded into a priority score using the system described above.
+The priority score mapping used for this example is shown in Table~\ref{tab:scores}.
+To start, the four binary complex flags are sorted so all the 1s are at the beginning, resulting in signals $S_i, i \in \interval{0}{3}$ for which $S_{i} \ge S_{i+1}$.
+This sort uses a size 4 bitonic sorter similar to the one shown for the arbiter, but since the select part is not needed it becomes much cheaper, needing only 12 FA or LA cells and 12 splitters for the whole sorter.
+Since this small sorter is only active for a few picoseconds in a period of hundreds of nanoseconds, a small internal leakage can be used to reset the FA and LA cells after operation.
+In order to encode the priority score into a temporal signal for the arbiter, we pass the $S$ flags and a dual rail representation of the $T$ flag into a controllable delay module.
+
+The basic block of the delay module is shown in Figure~\ref{fig:delblock}.
+A control signal determines which of two paths with different delays a pulse arriving at the clock port of the DROC will take before being merged to the output of the block.
+The additional delay incured when the control signal is set is configured by the number of JTL cells added to the longer path.
+Using the $S$ flags as the control inputs, the temporal encoder consists of two chains of delay blocks.
+We set the JTL delay of block $B_{i,t}, i \in \interval{0}{3}, t \in \interval{0}{1}$ such that the sum of the JTL delays for it and the blocks before it sum up to the temporal encoding for number of active quadrants equal to $i+1$ and $T = t$.
+The circuit diagram for the temporal encoder and the additional delay of each block to encode the mapping of Table~\ref{tab:scores} is shown in Figure~\ref{fig:tempenc}.
+The two chains produce two temporal encodings, one corresponding to $T$ being active and one for $T$ inactive.
+The outputs of the chains connect to the clock port of a DRO each, the first DRO having it's data port connected to the positive wire of the dual rail $T$ flag and the other to it's negative wire.
+Thus the temporal encoding is multiplexed by the $T$ flag to enter the arbiter.
+
 
 
 \end{document}
