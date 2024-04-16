@@ -4,6 +4,9 @@
 \usepackage{stmaryrd}
 \usepackage{amsmath}
 \usepackage{graphicx}
+% \usepackage{caption}
+% \usepackage{subcaption}
+\usepackage{subfigure}
 \newcommand{\inhib}{\relbar\mapsfromchar}
 
 \begin{document}
@@ -100,69 +103,53 @@ The two chains produce two temporal encodings, one corresponding to $T$ being ac
 The outputs of the chains connect to the clock port of a DRO each, the first DRO having it's data port connected to the positive wire of the dual rail $T$ flag and the other to it's negative wire.
 Thus the temporal encoding is multiplexed by the $T$ flag to enter the arbiter.
 
-\begin{figure}[h!]
-  \includegraphics[width=0.5\textwidth]{figures/comparator.drawio.pdf}
-  \caption{}
-  \label{fig:comp}
-\end{figure}
+    \begin{figure*}
 
-\begin{figure}[h!]
-  \includegraphics[width=0.5\textwidth]{figures/circuit_comparator.drawio.pdf}
-  \caption{}
+    \subfigure [] {
+  \includegraphics[width=0.25\textwidth]{figures/circuit_comparator.drawio.pdf}
   \label{fig:comcirc}
-\end{figure}
-
-\begin{figure}[h!]
-  \includegraphics[width=0.5\textwidth]{figures/sort4.drawio.pdf}
-  \caption{}
+}
+    \subfigure [] {
+  \includegraphics[width=0.22\textwidth]{figures/comparator.drawio.pdf}
+  \label{fig:comp}
+}
+    \subfigure [] {
+  \includegraphics[width=0.18\textwidth]{figures/sort4.drawio.pdf}
   \label{fig:sort4}
-\end{figure}
-
-\begin{figure}[h!]
-  \includegraphics[width=0.5\textwidth]{figures/arbiterk4n16.drawio.pdf}
-  \caption{}
+}
+    \subfigure [] {
+  \includegraphics[width=0.3\textwidth]{figures/arbiterk4n16.drawio.pdf}
   \label{fig:arb16}
-\end{figure}
+}
+\caption[]{
+  \subref{fig:comcirc} Circuit diagram of comparator module;
+\subref{fig:comp} Execution of comparator for input times of 30 and 50 ps with signal paths highlighted;
+\subref{fig:sort4} Comparators aranged in sorter of size 4 with path of largest priority score highlighted;
+\subref{fig:arb16} Arbiter selecting the top 4 out of 16 priority scores}%
+    \end{figure*}
 
-\begin{figure}[h!]
-  \includegraphics[width=0.5\textwidth]{figures/mtree.drawio.pdf}
-  \caption{}
+\begin{figure*}
+    \subfigure [] {
+  \includegraphics[width=0.25\textwidth]{figures/mtree.drawio.pdf}
   \label{fig:mtree}
-\end{figure}
-
-\begin{figure}[h!]
-  \includegraphics[width=0.5\textwidth]{figures/delay_block.drawio.pdf}
-  \caption{}
+}
+    \subfigure [] {
+  \includegraphics[width=0.22\textwidth]{figures/delay_block.drawio.pdf}
   \label{fig:delblock}
-\end{figure}
-
-\begin{figure}[h!]
-  \includegraphics[width=0.5\textwidth]{figures/temporal_encoder.drawio.pdf}
-  \caption{}
+}
+    \subfigure [] {
+  \includegraphics[width=0.17\textwidth]{figures/temporal_encoder.drawio.pdf}
   \label{fig:tempenc}
-\end{figure}
+}
+
+\caption[]{
+  \subref{fig:mtree} Merger trees aggregating the complex flags of each quadrant for a surface code of distance 5;
+\subref{fig:delblock} Circuit diagram of controllable delay block;
+\subref{fig:tempenc} Temporal encoder with delay blocks encoding the priority order of table ?}%
+    \end{figure*}
+
+\bibliographystyle{IEEEtranS}
+\bibliography{cite}
 
 \end{document}
-
-% @article{madhavan2014race,
-%   title={Race logic: A hardware acceleration for dynamic programming algorithms},
-%   author={Madhavan, Advait and Sherwood, Timothy and Strukov, Dmitri},
-%   journal={ACM SIGARCH Computer Architecture News},
-%   volume={42},
-%   number={3},
-%   pages={517--528},
-%   year={2014},
-%   publisher={ACM New York, NY, USA}
-% }
-
-% @ARTICLE{9380389,
-%   author={Tzimpragos, Georgios and Volk, Jennifer and Vasudevan, Dilip and Tsiskaridze, Nestan and Michelogiannakis, George and Madhavan, Advait and Shalf, John and Sherwood, Timothy},
-%   journal={IEEE Micro}, 
-%   title={Temporal Computing With Superconductors}, 
-%   year={2021},
-%   volume={41},
-%   number={3},
-%   pages={71-79},
-%   keywords={Superconducting logic circuits;Logic gates;Delays;Superconductivity;Semantics;Hardware;Josephson junctions},
-%   doi={10.1109/MM.2021.3066377}}
 
