@@ -1,4 +1,4 @@
-d,Complex flag JJ cost,Priority encoding JJ cost,Complex flag latency,Priority encoding latency
+d,CPX JJ cost,ENC JJ cost,CPX latency,ENC latency
 3,176,390,95,143
 5,592,430,105,157
 7,1244,490,109,164
