@@ -9,10 +9,10 @@ def plotarbi(events_to_plot, wires_to_display):
     od = collections.OrderedDict(events)
     variables = list(od.keys())
     data = list(od.values())
-    plt.rcParams["font.size"] = "30"
+    plt.rcParams["font.size"] = "50"
     plt.show()
     _, ax = plt.subplots()
-    plt.eventplot(data, orientation='horizontal', color='black', linelengths=0.9, linewidths=4)
+    plt.eventplot(data, orientation='horizontal', color='black', linelengths=0.9, linewidths=9)
     ax.set_xlabel('Time (ps)')
     ax.set_xlim(-1, until)
     ax.set_xticks([x for x in range(until+1) if (x % 10 == 0)])

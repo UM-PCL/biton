@@ -1,5 +1,5 @@
 \subsection{Hardware eval}
-In order to verify the correctness of our hardware designs, we have created gate-level implementations of them compatible with the pulse transfer simulator PyLse \cite{pylse}.
+In order to verify the correctness of our hardware designs, we have created gate-level implementations of them compatible with the pulse transfer simulator Pylse \cite{pylse}.
 The gate models we used are mostly based on the open source RSFQ cell library from Sun Magnetics \cite{rsfqlib} with the addition of a few cells we tuned ourselves, like the Muller C and inverted C elements.
 Using these models, we run extensive testing by comparing the measured outcomes of our circuits for thousands of randomly sampled inputs to the results predicted by higher order models.
 An example simulation in Figure~\ref{fig:pylserun} shows the pulses in the data input ($x$) and select output ($sel$) wires of a small arbiter selecting the two largest priority scores out of four ($k=2,n=4$).
@@ -45,8 +45,8 @@ d  & CPX JJ cost & ENC JJ cost & CPX latency & ENC latency \\ \hline
 
 \begin{figure}
   \begin{center}
-    \includegraphics[width=\columnwidth]{figures/arbi.pdf}
+    \includegraphics[width=\columnwidth]{figures/simlarge.pdf}
   \end{center}
-  \caption{}\label{fig:pylserun}
+  \caption{Simulation of arbiter selecting the two highest scoring qubits out of four. The plot shows the time a pulse (indicated by a vertical bar) appears in each of the arbiter's ports. The score of each qubit is encoded in the arrival time of a pulse in the corresponing input port x0 to x3. After a short delay, the arbiter generates pulses at the sel ports of the qubits with the latest arriving inputs. In this case, sel1 and sel2.}\label{fig:pylserun}
 \end{figure}
 
