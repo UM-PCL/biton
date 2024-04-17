@@ -1,0 +1,28 @@
+\subsection{Background on SFQ}
+
+To minimize the communication between stages with large temperature differences, which causes issues due to heat dissipation, our hardware must be placed as close to the mK stage the qubits occupy as possible.
+Single Flux Quantum (SFQ) \cite{rsfq} is a logic family based on superconducting hardware that is also able to perform quantum gates \cite{sfqubit}, although we will only make use of it's classical aspect in this paper.
+In SFQ, propagation picosecond wide pulses of voltage is used to perform computation.
+The presence of a pulse denotes a logical $1$, and the absence denotes a logical $0$.
+The flow of pulses in a circuit is controlled by Josephson Junctions (JJ), which are the fundamental element of the technology, analogous to the role transistors play in traditional semiconductor-based logic.
+SFQ currently suffers from having 3 or 4 orders of magnitude lower integration density than CMOS, thus reducing size to fit in the available budget of around a million JJ per chip is the main concern when designing a circuit for SFQ.
+The main metric used to evaluate this is the count of JJ the circuit requires.
+The most widely used family of SFQ cells is RSFQ \cite{rsfq}, which adds clock ports to many combinational gates (AND, OR, XOR).
+Theses cells output the result for the pulses received since the previous clock signal in their data ports when a new clock signal reaches them.
+The equivalent of a DFF in SFQ is the Destructive Read Out (DRO) cell, which will produce an output pulse upon receiving a clock pulse if it received one at the data port before.
+A variant of the DRO cell is the complementary output DRO cell (DROC), which has an additional output that triggers on the clock pulse if a data pulse has not been received.
+Clearly, exactly one of the DROC's output ports will fire with every clock trigger.
+The above cells are stateful, since they retain the information of which pulses they have received.
+If a DRO or DROC receive more than one data pulse before the clock trigger, additional data pulses will have no effect.
+Rather than having the clock signal reach all gates at the same time, a common approach is to pass clock pulses from earlier gates to later ones in a clock follows data scheme called concurrent clocking.
+This allows the entire circuit to be evaluated by only firing the clock trigger once.
+SFQ requires special interconnect cells, called splitters, to produce two pulses from one in order for a wire to have a fanout larger than one, and mergers to combine pulses from two sources in one.
+The need for splitters makes signals with very large fanouts, like clocks or global resets, much more expensive and hard to route for.
+The simplest interconnect cell is the Josephson Transmission Line (JTL), which repeats the pulses it receives.
+It can be used to add a set delay to a pulse's propagation.
+SFQ cells also include the Muller C and inverted C elements which do not require a clock port.
+The C element fires when pulses have arrived in both of it's two data inputs.
+Respectively, the inverted C element fires on the first time it receives a pulse in either of it's ports and resets when the other port receives a pulse.
+
+
+
