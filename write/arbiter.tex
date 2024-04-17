@@ -10,6 +10,17 @@
 \newcommand{\inhib}{\relbar\mapsfromchar}
 
 \begin{document}
+In order to limit the data transfer to higher temperatures, our design must operate at the 4 Kelvin layer of the cryogenic stack.
+Thus our design is based on the superconducting SFQ technology, which is the most mature computing technology for operating at this temperature.
+As previously discussed, the integration density of SFQ circuits is far behind that of modern semiconductors and the rate at which dissipated heat can be cooled in this environment is limited, limiting us to a few million JJ with a power budget of 1-2 Watt.
+
+There are three functionalities to implement in the 4K stage: 
+\begin{enumerate*}[label=\emph{\alph*})]
+  \item selecting the logical qubits with the highest priority scores,
+  \item producing the priority score for each logical qubit, and
+  \item locating the data qubits that should receive speculative correction.
+\end{enumerate*}
+
 \subsection{Arbiter implementation}
 
 In order to use the priority scores determined by our scheme to allocate the data transfer budget to the highest scoring logical qubits, we need a way to identify the $k$ logical qubits with the highest priority scores out of the $n$ that are competing to be decoded.
@@ -55,6 +66,10 @@ The $\frac{n}{2}$ signals left go through a similar sort and reduce process, alt
 After the final reduction $k$ signals will be left, from which the select signals for the top-$k$ will originate.
 Fig~\ref{fig:arb16} shows such a sparse arbiter that selects the top 4 out of 16 signals.
 
+For a constant ratio of qubits to be selected to total qubits $\frac{k}{n}$, the arbiter scales at a rate of $O(\log^2(n))$ latency-wise and $O(n\log^2(n))$ area-wise to the number of input logical qubits.
+Because the area scales superlinearly, for large numbers of logical qubits it can be more efficient to partition them into subsets and dedicating a smaller arbiter to each subset.
+Each of these arbiters will be assigned a slice of the total available bandwidth to allocate to the qubits it manages.
+
 \subsection{Reset scheme}
 
 After an execution of the arbiter, some of the DRO and DROC cells could be still storing a pulse, which needs to be cleared before the next execution can occur.
@@ -78,9 +93,13 @@ To support the second step only a splitter tree of size $n$ for the reset signal
 \subsection{Priority score evaluation}
 
 To evaluate the priority score of a logical qubit from it's syndromes, the first step is producing the complex flags for each ancilla qubit.
-We use the same basic gate configuration as \cite{btwc} for this end, and since the circuit is not pipelined but instead gets run once all the way through every decode cycle, we route in a clock-follows-data fashion (concurrent clocking), which lets us avoid inserting buffer gates to deal with logic depth imbalance.
-The complex flags from each ancilla qubit of the same type are agregated into a single flag for each quadrant that tracks whether any qubit belonging to the quadrant is the center of the complex clique.
-This agregation is done very efficiently by connecting the complex flag wires of each quadrant's ancillas as inputs to a merger tree of the same size.
+We use the same basic gate configuration as \cite{btwc} for this end, which consists of only three layers of gates (XOR, XNOR and AND). 
+Since the circuit is not pipelined but instead gets run once all the way through every decode cycle, we route in a clock-follows-data fashion (concurrent clocking), which lets us avoid inserting buffer gates to deal with logic depth imbalance.
+Beyond their role in determining priority scores, these complex flags are used to select the data qubits that will have an X or Z flip applied to them in the case of speculative correction.
+This speculative application circuit is entirely separate for each data qubit and consists of 4 splitters, 2 AND gates and one XOR gate, at a cost of 54 JJ per data qubit.
+
+The complex flags from each ancilla qubit of the same type are aggregated into a single flag for each quadrant that tracks whether any qubit belonging to the quadrant is the center of the complex clique.
+This aggregation is done very efficiently by connecting the complex flag wires of each quadrant's ancillas as inputs to a merger tree of the same size.
 Fig~\ref{fig:mtree} shows the connections of complex flags to the merger trees for an example surface code.
 Since merger cells are both clock-less and stateless, this is the cleanest way to combine a set of signals.
 Because more than one pulse might reach the output of the merger tree if multiple input complex flags fire, a DRO is placed at the output of each tree.
@@ -103,6 +122,10 @@ The two chains produce two temporal encodings, one corresponding to $T$ being ac
 The outputs of the chains connect to the clock port of a DRO each, the first DRO having it's data port connected to the positive wire of the dual rail $T$ flag and the other to it's negative wire.
 Thus the temporal encoding is multiplexed by the $T$ flag to enter the arbiter.
 
+The JJ cost of the part of the circuit that produces complex flags scales linearly to the number of ancilla qubits, or quadratically to the code distance.
+The priority score encoder remains the same for any surface code size except for the merger tree, which scales as little as possible at one additional merger per ancilla qubit.
+Regarding latency, doubling the number of ancilla qubits only increases delay by one splitter in the complex flag clock tree and one merger in the merger tree.
+This means surface codes of very large sizes can be handled with negligible additional delay.
     \begin{figure*}
 
     \subfigure [] {
