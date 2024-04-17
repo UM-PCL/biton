@@ -1,3 +1,4 @@
+from exec_fig import plotarbi
 from sortk import mergemax_r, sortk, mergemax, events_io
 from pylse import Wire, working_circuit
 from pylse.circuit import InGen
@@ -334,3 +335,34 @@ def extra_jj(k, n):
     cost_clear = (n - 1) * jj_s + (1 + n - k) * jj_m
     cost_reset = cost_sorted_inps + cost_clear
     return cost_temp, cost_reset
+
+def grafarbi():
+    working_circuit().reset()
+    priority_limit = 6
+    k, n = 2,4
+    clk_del = minimum_sampling_del(k, n)
+    inplist = [Wire(name=f"x{i}") for i in range(n)]
+    ingens = [InGen([]) for _ in range(n)]
+    for i in range(n):
+        working_circuit().add_node(
+            ingens[i], [working_circuit().source_wire()], [inplist[i]]
+        )
+    fdel = get_del(k, n)
+    max_in = priority_limit * minimum_sampling_del(k, n)
+    retimes = [fdel + max_in]
+    rets = [pylse.inp_at(*retimes, name=f"r{i}") for i in range(k)]
+    topk = arbiter(k, inplist, rets)
+    towatch = ["x", "sel"]
+    watchers = [[f"{x}{i}" for i in range(n)] for x in towatch]
+    # towatch2 = ["max", "r"]
+    # watchers2 = [[f"{x}{i}" for i in range(k)] for x in towatch2]
+    watch_wires = sum(watchers, [])
+    for i, x in enumerate(topk):
+        pylse.inspect(x, f"sel{i}")
+    samps = [2,5,4,3]
+    inps: list[float] = [clk_del * x for x in samps]
+    for ig, fire in zip(ingens, inps):
+        ig.times = [fire]
+    sim = pylse.Simulation()
+    events = sim.simulate()
+    plotarbi(events, wires_to_display=watch_wires)
