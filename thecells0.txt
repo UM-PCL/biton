@@ -1,0 +1,27 @@
+Cell name, JJ cost, Source
+JTL, 2, \cite{rsfqlib}
+LA, 4 , \cite{xsfqsynth}
+FA, 4 , \cite{xsfqsynth}
+Merger, 5 , \cite{rsfqlib}
+Splitter, 3 , \cite{rsfqlib}
+DRO, 4 , \cite{rsfqlib}
+DROC, 13 , \cite{rsfqlib}
+AND, 11 , \cite{rsfqlib}
+XOR, 11 , \cite{rsfqlib}
+XNOR, 19 , \cite{rsfqlib}
+
+\begin{table}[]
+\begin{tabular}{lll}
+Cell name & JJ cost & Source           \\ \hline
+JTL       & 2       & \cite{rsfqlib}   \\ \hline
+LA        & 4       & \cite{xsfqsynth} \\ \hline
+FA        & 4       & \cite{xsfqsynth} \\ \hline
+Merger    & 5       & \cite{rsfqlib}   \\ \hline
+Splitter  & 3       & \cite{rsfqlib}   \\ \hline
+DRO       & 4       & \cite{rsfqlib}   \\ \hline
+DROC      & 13      & \cite{rsfqlib}   \\ \hline
+AND       & 11      & \cite{rsfqlib}   \\ \hline
+XOR       & 11      & \cite{rsfqlib}   \\ \hline
+XNOR      & 19      & \cite{rsfqlib}   \\ \hline 
+\end{tabular}
+\end{table}
