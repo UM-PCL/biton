@@ -1,15 +1,5 @@
-\documentclass[conference]{IEEEtran}
-\usepackage{interval}
-\usepackage[inline]{enumitem}
-\usepackage{stmaryrd}
-\usepackage{amsmath}
-\usepackage{graphicx}
-% \usepackage{caption}
-% \usepackage{subcaption}
-\usepackage{subfigure}
-\newcommand{\inhib}{\relbar\mapsfromchar}
+\section{Hardware Implementation} % 2pg
 
-\begin{document}
 In order to limit the data transfer to higher temperatures, our design must operate at the 4 Kelvin layer of the cryogenic stack.
 Thus our design is based on the superconducting SFQ technology, which is the most mature computing technology for operating at this temperature.
 As previously discussed, the integration density of SFQ circuits is far behind that of modern semiconductors and the rate at which dissipated heat can be cooled in this environment is limited, limiting us to a few million JJ with a power budget of 1-2 Watt.
@@ -170,9 +160,3 @@ This means surface codes of very large sizes can be handled with negligible addi
 \subref{fig:delblock} Circuit diagram of controllable delay block;
 \subref{fig:tempenc} Temporal encoder with delay blocks encoding the priority order of table ?}%
     \end{figure*}
-
-\bibliographystyle{IEEEtranS}
-\bibliography{cite}
-
-\end{document}
-

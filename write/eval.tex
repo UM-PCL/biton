@@ -18,19 +18,20 @@ Additionally, the combined delay of both priority score generation and arbiter b
 \begin{table}[]
 \caption{Area and delay measurements for arbiters supporting various numbers of logical qubits.}
 \label{tab:arbstats}
-\begin{tabular}{|l|l|l|l|}
+  \begin{tabularx}{\columnwidth}{|p{0.1\columnwidth}|p{0.1\columnwidth}|p{0.3\columnwidth}|p{0.3\columnwidth}|}
 \hline
 k & n   & JJ count & latency (ps) \\ \hline
 2 & 64  & 6971     & 379          \\ \hline
 4 & 128 & 25793    & 588          \\ \hline
 8 & 256 & 83345    & 847          \\ \hline
-\end{tabular}
+\end{tabularx}
+\vspace{-\baselineskip}
 \end{table}
 
 \begin{table}[]
 \caption{Area and delay measurements for complex flag generation (CPX) and encoding to priority score (ENC).}
 \label{tab:encoderstats}
-\begin{tabular}{|l|l|l|l|l|}
+\begin{tabularx}{\columnwidth}{|p{0.07\columnwidth}|X|X|X|X|}
 \hline
 d  & CPX JJ cost & ENC JJ cost & CPX latency & ENC latency \\ \hline
 3  & 176         & 390         & 95          & 143         \\ \hline
@@ -43,8 +44,10 @@ d  & CPX JJ cost & ENC JJ cost & CPX latency & ENC latency \\ \hline
 17 & 8044        & 1090        & 126         & 181         \\ \hline
 19 & 10112       & 1270        & 126         & 181         \\ \hline
 21 & 12416       & 1470        & 126         & 181         \\ \hline
-\end{tabular}
+\end{tabularx}
+\vspace{-\baselineskip}
 \end{table}
+
 
 \begin{figure}
   \begin{center}
@@ -52,4 +55,5 @@ d  & CPX JJ cost & ENC JJ cost & CPX latency & ENC latency \\ \hline
   \end{center}
   \caption{Simulation of arbiter selecting the two highest scoring qubits out of four. The plot shows the time a pulse (indicated by a vertical bar) appears in each of the arbiter's ports. The score of each qubit is encoded in the arrival time of a pulse in the corresponing input port x0 to x3. After a short delay, the arbiter generates pulses at the sel ports of the qubits with the latest arriving inputs. In this case, sel1 and sel2.}\label{fig:pylserun}
 \end{figure}
+
 
