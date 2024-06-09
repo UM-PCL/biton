@@ -25,9 +25,12 @@ def mtree(subset: list[Wire]) -> Wire:
     return mtree(mglayer)
 
 
-def sync_mtree(subset: list[Wire], clk: Wire):
+def sync_mtree(subset: list[Wire], clk: Wire, name_m: None|str=None):
     "mergetree with dro at end to eat extra pulses"
-    return dro(mtree(subset), clk)
+    h = mtree(subset)
+    if(name_m):
+        inspect(h, name_m)
+    return dro(h, clk)
 
 
 def setscores(flags: list[Wire], clk: Wire) -> list[Wire]:
