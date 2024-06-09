@@ -1,17 +1,17 @@
-from collections.abc import Callable
 from itertools import product
+from math import ceil, log2
 
 from numpy.random import choice
+from pylse import Simulation, Wire, inp_at, inspect, working_circuit
+from tqdm import tqdm
+
+from helpers import get_jj
 from priority_encoder import sync_mtree
-from sfq_cells2 import c, c_inv, dro, jtl_chain, m, dro_c, JTL, s, split
-from pylse import working_circuit, Wire, inp_at, Simulation, inspect
-from math import ceil, log2
-from operator import sub
-from helpers import get_jj, get_latency
+from sfq_cells2 import c, c_inv, dro, dro_c, m, s, split
 
 
-def inp_list(l, *args, **kwargs):
-    return inp_at(*l, *args, **kwargs)
+def inp_list(timelist, *args, **kwargs):
+    return inp_at(*timelist, *args, **kwargs)
 
 
 def temp_posterior(q1: Wire, q2: Wire, t: Wire, start: Wire, clk: Wire) -> Wire:
@@ -40,7 +40,7 @@ def demo_delenc(q1: int, q2: int, t: int, clk: float = 20):
     wt = inp_list(t * [0], name="t")
     start = inp_at(10, name="start")
     wclk = inp_list([clk * i for i in range(1, 6)], name="clk")
-    d_out = temp_posterior(wq1, wq2, wt, start, wclk)
+    _ = temp_posterior(wq1, wq2, wt, start, wclk)
     sim = Simulation()
     events = sim.simulate()
     sig = events["signal"]
@@ -89,7 +89,7 @@ def testq12():
     for q in g:
         working_circuit().reset()
         qs = [inp_list(x * [0], name=f"qin{i}") for i, x in enumerate(q)]
-        q1, q2 = q12(qs)
+        _, _ = q12(qs)
         sim = Simulation()
         events = sim.simulate()
         e1 = events["q1"]
@@ -121,7 +121,7 @@ def guess_dels(d=9, clk=40):
 
 def test_score(d=9, clk=40):
     working_circuit().reset()
-    t_eval, t_start, t_clk0, t_final = guess_dels(d, clk)
+    t_eval, t_start, t_clk0, _ = guess_dels(d, clk)
     n_synd = (d + 1) * (d - 1) // 2
     n_quad = n_synd // 4
     pq = 0.5
@@ -145,12 +145,13 @@ def test_score(d=9, clk=40):
     for i, q in enumerate(qs):
         inspect(q, f"quadrant{i}")
     q1, q2 = q12(qs)
-    t = choice([True, False])
+    t = bool(choice([True, False]))
     wt = inp_list(t * [10], name="t")
     temp_posterior(q1, q2, wt, start, clkg)
     sim = Simulation()
     events = sim.simulate()
-    k = events["signal"][0] - t_clk0
+    d_out = events["signal"][0]
+    k = d_out - t_clk0
     ex_q1 = sum(shall_qs) > 0
     ex_q2 = sum(shall_qs) > 1
     exp_score = ex_q1 * (1 + t * 2 + ex_q2)
@@ -158,4 +159,28 @@ def test_score(d=9, clk=40):
     # from IPython import embed
     #
     # embed()
-    return k
+    return d_out, exp_score
+
+
+def count_jj():
+    emp_jj = {}
+    for i in tqdm(range(7, 23, 2)):
+        test_score(d=i)
+        emp_jj[i] = get_jj()
+        assert emp_jj[i] == exp_jj(i)
+    return emp_jj
+
+
+def exp_jj(d=9):
+    n_synd = (d + 1) * (d - 1) // 2
+    n_quad = n_synd // 4
+    mj = 5
+    drj = 4
+    spj = 3
+    drcj = 13
+    mtr = mj * (n_quad - 1)
+    cmtr = mtr + drj
+    srtr = 8 * 4 + 6 * spj
+    qj = 4 * cmtr + 3 * spj + srtr
+    tmpj = 3 * drcj + 5 * drj + 3 * mj + 4 * spj
+    return qj + tmpj
