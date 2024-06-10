@@ -1,10 +1,10 @@
-from exec_fig import plotarbi
+from exec_fig import plotarbi, plotarbi16
 from sortk import mergemax_r, sortk, mergemax, events_io
 from pylse import Wire, working_circuit
 from pylse.circuit import InGen
 import pylse
 from math import inf, log2
-from numpy.random import choice as npchoice
+from numpy.random import choice as npchoice, shuffle
 from tqdm import tqdm
 
 
@@ -366,3 +366,35 @@ def grafarbi():
     sim = pylse.Simulation()
     events = sim.simulate()
     plotarbi(events, wires_to_display=watch_wires)
+
+def grafarbi_16():
+    working_circuit().reset()
+    priority_limit = 5
+    k, n = 4,16
+    clk_del = 40
+    inplist = [Wire(name=f"x{i}") for i in range(n)]
+    ingens = [InGen([]) for _ in range(n)]
+    for i in range(n):
+        working_circuit().add_node(
+            ingens[i], [working_circuit().source_wire()], [inplist[i]]
+        )
+    fdel = get_del(k, n)
+    max_in = priority_limit * clk_del
+    retimes = [fdel + max_in]
+    rets = [pylse.inp_at(*retimes, name=f"r{i}") for i in range(k)]
+    topk = arbiter(k, inplist, rets)
+    towatch = ["x", "sel"]
+    watchers = [[f"{x}{i}" for i in range(n)] for x in towatch]
+    # towatch2 = ["max", "r"]
+    # watchers2 = [[f"{x}{i}" for i in range(k)] for x in towatch2]
+    watch_wires = sum(watchers, [])
+    for i, x in enumerate(topk):
+        pylse.inspect(x, f"sel{i}")
+    samps = [2]+[0,1,2,3,4]*3
+    shuffle(samps)
+    inps: list[float] = [clk_del * x for x in samps]
+    for ig, fire in zip(ingens, inps):
+        ig.times = [fire]
+    sim = pylse.Simulation()
+    events = sim.simulate()
+    plotarbi16(events, wires_to_display=watch_wires)
