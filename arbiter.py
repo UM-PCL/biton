@@ -369,7 +369,7 @@ def grafarbi():
 
 def grafarbi_16():
     working_circuit().reset()
-    priority_limit = 5
+    priority_limit = 4
     k, n = 4,16
     clk_del = 40
     inplist = [Wire(name=f"x{i}") for i in range(n)]
@@ -392,9 +392,12 @@ def grafarbi_16():
         pylse.inspect(x, f"sel{i}")
     samps = [2]+[0,1,2,3,4]*3
     shuffle(samps)
+    labelsx = [f"x[{i}]={s}" for i,s in enumerate(samps)]
     inps: list[float] = [clk_del * x for x in samps]
     for ig, fire in zip(ingens, inps):
         ig.times = [fire]
     sim = pylse.Simulation()
     events = sim.simulate()
-    plotarbi16(events, wires_to_display=watch_wires)
+    labelsel = [f"sel[{i}]={'T' if events[f'sel{i}']!=[] else 'F'}" for i in range(16)]
+    labels = labelsx + labelsel
+    plotarbi16(events, wires_to_display=watch_wires,labels=labels, ret=retimes[0])
