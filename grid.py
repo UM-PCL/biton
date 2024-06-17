@@ -277,12 +277,13 @@ def get_gridspecs(d: int, n_runs: int):
 
 def late_est(d: int, nq: int = 1) -> tuple[float, int]:
     n = xcnt(d)
+    d_jtl = 4.6
     gen_clk = 20 if nq == 1 else 5.1 * ceil(log2(nq))
-    third_ck = gen_clk + 3 * 5.1 + 2 * 6 * 3.5
+    third_ck = gen_clk + 3 * 5.1 + 2 * 6 * d_jtl
     spltree = ceil(log2(n)) * 5.1
     d_and = 5.0
-    cachup_jtl = ceil((spltree + d_and) / 3.5)
-    dcpx = third_ck + cachup_jtl * 3.5
+    cachup_jtl = ceil((spltree + d_and) / d_jtl)
+    dcpx = third_ck + cachup_jtl * d_jtl
     return dcpx, cachup_jtl
 
 

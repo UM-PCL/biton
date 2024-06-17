@@ -41,7 +41,7 @@ def setscores(flags: list[Wire], clk: Wire) -> list[Wire]:
 
 def mtr_wait(n: int) -> int:
     x = est_mtreetime(n)
-    return ceil(x/3.5)
+    return ceil(x/4.6)
 
 
 def qubit_priority(cpx: list[Wire], clk: Wire, t: Wire, nt: Wire) -> Wire:
@@ -146,7 +146,7 @@ def demo_embed(d: int, t: bool, bsynd: ndarray, clkg: Wire):
     flags, prop_clk = gridx(d, bsynd, clkg)
     n = xcnt(d)
     start_time = est_mtreetime(ceil(n/4))  # Yes I know mtree is n/4, left extra for safety
-    mtree_catchup = ceil(start_time / 3.5)
+    mtree_catchup = ceil(start_time / 4.6)
     if mtree_catchup >= 1:
         clk = jtl_chain(prop_clk, mtree_catchup, names="start")  
     else:
@@ -267,10 +267,10 @@ def est_mtreetime(n: int):
 
 def est_priodelay(n: int):
     mt = est_mtreetime(ceil(n/4))
-    norm_mtree = ceil(mt / 3.5) * 3.5
+    norm_mtree = ceil(mt / 4.6) * 4.6
     temp_base = calculate()[1]
     jtl_wait_sort = 17
-    start_temp = norm_mtree + 5.1 + jtl_wait_sort * 3.5
+    start_temp = norm_mtree + 5.1 + jtl_wait_sort * 4.6
     est = start_temp + temp_base
     return est
 
