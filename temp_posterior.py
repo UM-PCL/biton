@@ -109,11 +109,11 @@ def testq12():
 def guess_dels(d=9, clk=40):
     n_synd = (d + 1) * (d - 1) // 2
     n_quad = n_synd // 4
-    d_mtree = 6.3 * ceil(log2(n_quad))
+    d_mtree = 8.3 * ceil(log2(n_quad))
     t_eval = d_mtree + 1
     d_s2 = 3.6 + 35.9 + 1.2
     t_start = t_eval + d_s2
-    t_clk0 = t_start + 9.5 + 2 * 6.3
+    t_clk0 = t_start + 9.5 + 2 * 8.3
     # final time to report = t_clk0 + 3.6 + 4T(clk)
     t_final = 4 * clk + t_clk0 + 3.6
     return t_eval, t_start, t_clk0, t_final

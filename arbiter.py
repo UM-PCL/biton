@@ -78,7 +78,7 @@ def get_back_del(k: int, n: int) -> float:
     depthn = log2(n) - lk
     depthk = lk * (lk + 1) // 2
     ddroc = 9.5
-    dmg = 6.3
+    dmg = 8.3
     dcomp = ddroc + dmg
     # adding dmg to delay of cmax because
     # of merger for reset signal entry in one side

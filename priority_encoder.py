@@ -251,18 +251,18 @@ anord = ([1, 1, 4, 5], [2, 3, 6, 7])
 def calculate():
     comp_del = 8.8 + 5.1
     sort_del = 3 * comp_del
-    route_del = 9.5 + 6.3
-    baseline = 5.1 + 3.6 + 6.3 + 4 * route_del
+    route_del = 9.5 + 8.3
+    baseline = 5.1 + 3.6 + 8.3 + 4 * route_del
     # actual encoding "delay" is counted in arbiter delay
     # d = 5
     # xcount = ((d-1)**2 + d - 1) // 2
-    # mtree_del = 6.3 * ceil(log2(ceil(xcount/4))) + 3.6
+    # mtree_del = 8.3 * ceil(log2(ceil(xcount/4))) + 3.6
     return sort_del, baseline
 
 
 def est_mtreetime(n: int):
     # est_jj = 5 * (n-1)
-    return 6.3 * ceil(log2(n))
+    return 8.3 * ceil(log2(n))
 
 
 def est_priodelay(n: int):
