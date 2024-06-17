@@ -15,6 +15,7 @@ def get_data():
         info(2, 64),
         info(4, 128),
         info(8, 256),
+        info(8, 512)
     ]
     df = DataFrame.from_records(data)
     return df

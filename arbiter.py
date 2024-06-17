@@ -134,16 +134,16 @@ def info(k, n):
     info_dict = {}
     info_dict["n"] = n
     info_dict["k"] = k
-    info_dict["temporal_distance"] = minimum_sampling_del(k, n)
+    # info_dict["temporal_distance"] = minimum_sampling_del(k, n)
     info_dict["forward_delay"] = get_del(k, n)
-    info_dict["latest_input"] = 6 * info_dict["temporal_distance"]
-    info_dict["return_start"] = info_dict["forward_delay"] + info_dict["latest_input"]
-    info_dict["backwards_delay"] = get_back_del(k, n)
-    info_dict["total_delay"] = info_dict["return_start"] + info_dict["backwards_delay"]
+    # info_dict["latest_input"] = 6 * info_dict["temporal_distance"]
+    # info_dict["return_start"] = info_dict["forward_delay"] + info_dict["latest_input"]
+    info_dict["backwards_delay"] = get_back_del(k, n) + 20 # add 20 ps for droc setup
+    info_dict["total_delay"] = info_dict["forward_delay"] + info_dict["backwards_delay"]
     info_dict["JJs"] = jj_estimation(k, n)
-    info_dict["temp_jj"], info_dict["reset_jj"] = extra_jj(k, n)
+    info_dict["reset_jj"] = extra_jj(k, n)[1]
     info_dict["total_jj"] = (
-        info_dict["JJs"] + info_dict["temp_jj"] + info_dict["reset_jj"]
+        info_dict["JJs"] + info_dict["reset_jj"]
     )
     return info_dict
 
@@ -326,14 +326,16 @@ def extra_jj(k, n):
     jj_s = 3
     jj_m = 5
     jjtl = 2
+    jj_dro = 4
     jj_temp = 96
     # spliter tree for 3 addr bits and start signal
     cost_spl_temp = 4 * (n - 1) * jj_s
     # cost of temporal encoding
     cost_temp = jj_temp * n + cost_spl_temp
-    cost_sorted_inps = (n - 1) * (jj_s + 3 * jjtl) + n * jj_m
+    cost_sorted_inps = (n - 1) * (jj_s + jj_s + jj_dro) + n * jj_m
     cost_clear = (n - 1) * jj_s + (1 + n - k) * jj_m
     cost_reset = cost_sorted_inps + cost_clear
+    #this is for older temp, changed and counting elsewhere now
     return cost_temp, cost_reset
 
 def grafarbi():
