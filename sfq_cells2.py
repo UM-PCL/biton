@@ -19,7 +19,7 @@ class JTL(SFQ):
         {"source": "idle", "trigger": "a", "dest": "idle", "firing": "q"},
     ]
     jjs = 2
-    firing_delay = 3.5
+    firing_delay = 4.6
 
 
 class C(SFQ):
@@ -131,7 +131,7 @@ class M(SFQ):
     name = "M"
     inputs = ["a", "b"]
     outputs = ["q"]
-    firing_delay = 6.3
+    firing_delay = 8.3
     # Cant have hold time in merge tree
     # _hold_time = 5
     _hold_time = 0
