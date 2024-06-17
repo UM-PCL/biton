@@ -4,6 +4,7 @@ from numpy.core.multiarray import ndarray
 from pylse import Wire, working_circuit, inp_at, Simulation
 from sfq_cells2 import and_s, inv, jtl_chain, s, xor_s, xnor_s, split
 from helpers import get_jj, get_latency, xcnt
+from tqdm import tqdm
 
 grab = working_circuit().get_wire_by_name
 
@@ -192,7 +193,7 @@ def grid(d: int, plot=False):
     nclk: int = int(np.floor((d - 1) ** 2 / 2))
     assert len(validvert) == nclk
     assert len(symptom_par) == np.ceil((d - 1) ** 2 / 2 + d - 1)
-    clk = inp_at(20, name="clk")
+    clk = inp_at(0, name="clk")
     clk1, clks1 = s(clk)
     clkj1 = jtl_chain(clks1, 6)
     clk2, clks2 = s(clkj1)
@@ -264,13 +265,13 @@ def grid(d: int, plot=False):
 def syndromes(
     pos: list[tuple[int, int]], synd_array: np.ndarray
 ) -> dict[tuple[int, int], Wire]:
-    synd_times = [[10] * bool(x) for x in synd_array]
+    synd_times = [[0] * bool(x) for x in synd_array]
     synd_wires = {xy: inp_at(*syn, name=f"syn{xy}") for syn, xy in zip(synd_times, pos)}
     return synd_wires
 
 
 def get_gridspecs(d: int, n_runs: int):
-    lates = [la for _, la, _, _, _ in [grid(d=d) for _ in range(n_runs)]]
+    lates = [la for _, la, _, _, _ in [grid(d=d) for _ in tqdm(range(n_runs))]]
     jj = get_jj()
     return {"d": d, "jj": jj, "latency": max(lates)}
 
@@ -278,7 +279,7 @@ def get_gridspecs(d: int, n_runs: int):
 def late_est(d: int, nq: int = 1) -> tuple[float, int]:
     n = xcnt(d)
     d_jtl = 4.6
-    gen_clk = 20 if nq == 1 else 5.1 * ceil(log2(nq))
+    gen_clk = 0 if nq == 1 else 5.1 * ceil(log2(nq))
     third_ck = gen_clk + 3 * 5.1 + 2 * 6 * d_jtl
     spltree = ceil(log2(n)) * 5.1
     d_and = 5.0
