@@ -8,6 +8,7 @@ from tqdm import tqdm
 from helpers import get_jj
 from priority_encoder import sync_mtree
 from sfq_cells2 import c, c_inv, dro, dro_c, m, s, split
+import pandas as pd
 
 
 def inp_list(timelist, *args, **kwargs):
@@ -118,6 +119,22 @@ def guess_dels(d=9, clk=40):
     t_final = 4 * clk + t_clk0 + 3.6
     return t_eval, t_start, t_clk0, t_final
 
+
+def report_del(d=9):
+    return guess_dels(d)[2]+3.6
+
+
+def empirical_jj():
+    emp_jj = {}
+    for i in tqdm(range(7,23,2)):
+        test_score(d=i)
+        emp_jj[i] = get_jj()
+    return pd.Series(emp_jj, name="score_jjs")
+
+def reporter_score():
+    m_time = pd.Series({i: report_del(i) for i in range(7,23,2)}, name="score_dl")
+    jjs = empirical_jj()
+    return pd.concat([jjs,m_time],axis=1)
 
 def test_score(d=9, clk=40):
     working_circuit().reset()
