@@ -61,8 +61,8 @@ def get_del(k: int, n: int) -> float:
     lk = log2(k)
     depthn = log2(n) - lk
     depthk = lk * (lk + 1) // 2
-    dla = 8.1
-    dfa = 8.8
+    dla = 7
+    dfa = 7
     dspl = 5.1
     dcell = max(dla, dfa)
     dcomp = dcell + (2 * dspl)
@@ -93,8 +93,8 @@ def minimum_sampling_del(k: int, n: int) -> float:
     lk = log2(k)
     depthn = log2(n) - lk
     depthk = lk * (lk + 1) // 2
-    dla = 8.1
-    dfa = 8.8
+    dla = 7
+    dfa = 7
     deltacell = abs(dla - dfa)
     delta = (depthk + (depthn - 1) * lk) * deltacell
     clk_del = max(delta, 10)
@@ -138,7 +138,7 @@ def info(k, n):
     info_dict["forward_delay"] = get_del(k, n)
     # info_dict["latest_input"] = 6 * info_dict["temporal_distance"]
     # info_dict["return_start"] = info_dict["forward_delay"] + info_dict["latest_input"]
-    info_dict["backwards_delay"] = get_back_del(k, n) + 20 # add 20 ps for droc setup
+    info_dict["backwards_delay"] = get_back_del(k, n)
     info_dict["total_delay"] = info_dict["forward_delay"] + info_dict["backwards_delay"]
     info_dict["JJs"] = jj_estimation(k, n)
     info_dict["reset_jj"] = extra_jj(k, n)[1]
@@ -152,7 +152,7 @@ def sim_arbiter(
     k: int, n: int, n_runs: int = 1, plot: bool = True, clear: bool = False
 ):
     working_circuit().reset()
-    priority_limit = 6
+    priority_limit = 4
     clk_del = minimum_sampling_del(k, n)
     inplist = [Wire(name=f"x{i}") for i in range(n)]
     ingens = [InGen([]) for _ in range(n)]
@@ -161,10 +161,10 @@ def sim_arbiter(
             ingens[i], [working_circuit().source_wire()], [inplist[i]]
         )
     data = info(k, n)
-    total_delay: float = data["total_delay"]
     fdel = get_del(k, n)
     max_in = priority_limit * minimum_sampling_del(k, n)
     clear_max_in = n * minimum_sampling_del(k, n)
+    total_delay: float = data["total_delay"] + max_in
     clear_time = total_delay + fdel + clear_max_in
     retimes = [fdel + max_in] + clear * [clear_time]
     rets = [pylse.inp_at(*retimes, name=f"r{i}") for i in range(k)]
@@ -287,7 +287,8 @@ def check_arbitrage(k: int, x, o, clear: bool = False):
     # print(f"{(winners, chosen)=}")
     assert winners == chosen
     total_delay = max(ret for ret in o if ret < inf)
-    pred_total = info(k, len(x))["total_delay"]
+    max_in = 4
+    pred_total = info(k, len(x))["total_delay"] + max_in * minimum_sampling_del(k,n) # max_in * min_dt
     predicted_delay = pred_total if not clear else 2 * pred_total + 100
     if clear:
         print(f"{(k,n,total_delay)=}")

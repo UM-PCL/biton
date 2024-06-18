@@ -249,7 +249,7 @@ anord = ([1, 1, 4, 5], [2, 3, 6, 7])
 
 
 def calculate():
-    comp_del = 8.8 + 5.1
+    comp_del = 7 + 5.1
     sort_del = 3 * comp_del
     route_del = 9.5 + 8.3
     baseline = 5.1 + 3.6 + 8.3 + 4 * route_del

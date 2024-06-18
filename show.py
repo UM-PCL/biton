@@ -18,6 +18,7 @@ def get_data():
         info(8, 512)
     ]
     df = DataFrame.from_records(data)
+    df["backwards_delay"] +=20
     return df
 
 
