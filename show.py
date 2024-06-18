@@ -19,6 +19,7 @@ def get_data():
     ]
     df = DataFrame.from_records(data)
     df["backwards_delay"] +=20
+    df["total_delay"] +=20
     return df
 
 
